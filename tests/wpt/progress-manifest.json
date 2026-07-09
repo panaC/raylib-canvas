@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "notes": [
+    "Rules classify upstream Canvas WPT areas that are outside the current implementation.",
+    "Official smoke tests live in tests/wpt/canvas-smoke-tests.txt and are executed by npm run test:wpt."
+  ],
+  "failing": [],
+  "rules": [
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/canvas-host/",
+      "reason": "Depends on HTMLCanvasElement attributes, parser reflection, layout, fallback content, or DOM host behavior outside createCanvas()."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/offscreen/",
+      "reason": "Depends on OffscreenCanvas and worker host behavior."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/video/",
+      "reason": "Depends on HTML media/image loading host behavior."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/drawing-paths-to-the-canvas/",
+      "reason": "Path construction, fill, stroke, clipping, and hit testing are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/path-objects/",
+      "reason": "Path2D is not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/transformations/",
+      "reason": "Canvas transform state is not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/line-styles/",
+      "reason": "Stroke state and line styling are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/text-styles/",
+      "reason": "Text styles and font parsing are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/drawing-text-to-the-canvas/",
+      "reason": "Text drawing and text metrics are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/drawing-images-to-the-canvas/",
+      "reason": "drawImage() and CanvasImageSource handling are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/compositing/",
+      "reason": "globalAlpha and globalCompositeOperation are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/shadows/",
+      "reason": "Shadow state and rendering are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/filters/",
+      "reason": "Canvas filters are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/fill-and-stroke-styles/",
+      "reason": "Only a small fillStyle color subset exists; gradients, patterns, strokeStyle, and broad CSS color parsing are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/pixel-manipulation/",
+      "reason": "Only getImageData() basics exist; createImageData(), putImageData(), color spaces, and settings are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/drawing-rectangles-to-the-canvas/",
+      "reason": "Only fillRect()/clearRect() basics exist; strokeRect(), state interaction, transforms, shadows, and edge cases are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/canvas-state/",
+      "reason": "save(), restore(), reset(), and drawing state stacks are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/image-smoothing/",
+      "reason": "Image smoothing state is not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/wide-gamut-canvas/",
+      "reason": "Canvas color space and color type options are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/color-type/",
+      "reason": "Canvas color type options are not implemented yet."
+    }
+  ]
+}

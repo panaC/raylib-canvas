@@ -1,0 +1,13 @@
+# Official upstream HTML Canvas WPT files that match the current package surface.
+html/canvas/element/canvas-context/2d.canvas.context.exists.html
+html/canvas/element/canvas-context/2d.canvas.context.shared.html
+html/canvas/element/drawing-rectangles-to-the-canvas/2d.fillRect.basic.html
+html/canvas/element/drawing-rectangles-to-the-canvas/2d.fillRect.negative.html
+html/canvas/element/drawing-rectangles-to-the-canvas/2d.clearRect.basic.html
+html/canvas/element/drawing-rectangles-to-the-canvas/2d.clearRect.negative.html
+html/canvas/element/fill-and-stroke-styles/2d.fillStyle.parse.hex3.html
+html/canvas/element/fill-and-stroke-styles/2d.fillStyle.parse.invalid.name-1.html
+html/canvas/element/pixel-manipulation/2d.imageData.get.basic.html
+html/canvas/element/pixel-manipulation/2d.imageData.get.source.outside.html
+html/canvas/element/pixel-manipulation/2d.imageData.get.zero.html
+html/canvas/element/pixel-manipulation/2d.imageData.get.nonfinite.html

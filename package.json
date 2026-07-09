@@ -1,0 +1,54 @@
+{
+  "name": "raylib-canvas",
+  "version": "0.1.0",
+  "description": "Canvas-like 2D API starter pack with pluggable renderers.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "examples",
+    "docs"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:pdfjs && npm run test:wpt && npm run test:e2e",
+    "test:unit": "vitest run tests/unit",
+    "test:pdfjs": "vitest run tests/pdfjs",
+    "test:wpt": "node scripts/wpt-run.mjs --suite smoke",
+    "test:e2e": "playwright test tests/e2e",
+    "build:wpt-shim": "node scripts/build-wpt-shim.mjs",
+    "wpt:setup": "node scripts/wpt-setup.mjs",
+    "wpt:full": "node scripts/wpt-run.mjs --suite full",
+    "wpt:progress": "node scripts/wpt-progress.mjs",
+    "demo:build": "node scripts/build-demo.mjs",
+    "demo:serve": "node scripts/serve-demo.mjs"
+  },
+  "keywords": [
+    "canvas",
+    "raylib",
+    "wasm",
+    "2d"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "@types/pngjs": "^6.0.5",
+    "esbuild": "^0.23.0",
+    "pdfjs-dist": "^6.1.200",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  }
+}
