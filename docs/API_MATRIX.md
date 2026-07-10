@@ -58,30 +58,30 @@
 | `textRendering` | [WHATWG textRendering](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textrendering-dev) | done |
 | `fillStyle` | [WHATWG fillStyle](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fillstyle-dev) | partial |
 | `strokeStyle` | [WHATWG strokeStyle](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokestyle-dev) | partial |
-| `createLinearGradient(x0, y0, x1, y1)` | [WHATWG createLinearGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createlineargradient-dev) | waiting |
-| `createRadialGradient(...)` | [WHATWG createRadialGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createradialgradient-dev) | waiting |
-| `createConicGradient(startAngle, x, y)` | [WHATWG createConicGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createconicgradient-dev) | waiting |
-| `createPattern(image, repetition)` | [WHATWG createPattern](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createpattern-dev) | waiting |
-| `shadowOffsetX` | [WHATWG shadowOffsetX](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowoffsetx-dev) | waiting |
-| `shadowOffsetY` | [WHATWG shadowOffsetY](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowoffsety-dev) | waiting |
-| `shadowBlur` | [WHATWG shadowBlur](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowblur-dev) | waiting |
-| `shadowColor` | [WHATWG shadowColor](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowcolor-dev) | waiting |
-| `filter` | [WHATWG filter](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-filter-dev) | waiting |
+| `createLinearGradient(x0, y0, x1, y1)` | [WHATWG createLinearGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createlineargradient-dev) | partial |
+| `createRadialGradient(...)` | [WHATWG createRadialGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createradialgradient-dev) | partial |
+| `createConicGradient(startAngle, x, y)` | [WHATWG createConicGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createconicgradient-dev) | partial |
+| `createPattern(image, repetition)` | [WHATWG createPattern](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createpattern-dev) | partial |
+| `shadowOffsetX` | [WHATWG shadowOffsetX](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowoffsetx-dev) | partial |
+| `shadowOffsetY` | [WHATWG shadowOffsetY](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowoffsety-dev) | partial |
+| `shadowBlur` | [WHATWG shadowBlur](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowblur-dev) | partial |
+| `shadowColor` | [WHATWG shadowColor](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowcolor-dev) | partial |
+| `filter` | [WHATWG filter](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-filter-dev) | partial |
 | `clearRect(x, y, w, h)` | [WHATWG clearRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-clearrect-dev) | partial |
 | `fillRect(x, y, w, h)` | [WHATWG fillRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fillrect-dev) | partial |
 | `strokeRect(x, y, w, h)` | [WHATWG strokeRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokerect-dev) | partial |
-| `beginPath()` | [WHATWG beginPath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-beginpath-dev) | waiting |
-| `closePath()` | [WHATWG closePath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-closepath-dev) | waiting |
-| `moveTo(x, y)` | [WHATWG moveTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-moveto-dev) | waiting |
-| `lineTo(x, y)` | [WHATWG lineTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-lineto-dev) | waiting |
-| `quadraticCurveTo(cpx, cpy, x, y)` | [WHATWG quadraticCurveTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-quadraticcurveto-dev) | waiting |
-| `bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)` | [WHATWG bezierCurveTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-beziercurveto-dev) | waiting |
-| `arcTo(x1, y1, x2, y2, radius)` | [WHATWG arcTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-arcto-dev) | waiting |
-| `rect(x, y, w, h)` | [WHATWG rect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-rect-dev) | waiting |
-| `roundRect(x, y, w, h, radii)` | [WHATWG roundRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-roundrect-dev) | waiting |
-| `arc(x, y, radius, startAngle, endAngle, counterclockwise)` | [WHATWG arc](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-arc-dev) | waiting |
-| `ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle, counterclockwise)` | [WHATWG ellipse](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ellipse-dev) | waiting |
-| `fill(pathOrRule?)` | [WHATWG fill](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fill-dev) | waiting |
+| `beginPath()` | [WHATWG beginPath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-beginpath-dev) | done |
+| `closePath()` | [WHATWG closePath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-closepath-dev) | partial |
+| `moveTo(x, y)` | [WHATWG moveTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-moveto-dev) | done |
+| `lineTo(x, y)` | [WHATWG lineTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-lineto-dev) | partial |
+| `quadraticCurveTo(cpx, cpy, x, y)` | [WHATWG quadraticCurveTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-quadraticcurveto-dev) | partial |
+| `bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)` | [WHATWG bezierCurveTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-beziercurveto-dev) | partial |
+| `arcTo(x1, y1, x2, y2, radius)` | [WHATWG arcTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-arcto-dev) | partial |
+| `rect(x, y, w, h)` | [WHATWG rect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-rect-dev) | partial |
+| `roundRect(x, y, w, h, radii)` | [WHATWG roundRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-roundrect-dev) | partial |
+| `arc(x, y, radius, startAngle, endAngle, counterclockwise)` | [WHATWG arc](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-arc-dev) | partial |
+| `ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle, counterclockwise)` | [WHATWG ellipse](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ellipse-dev) | partial |
+| `fill(pathOrRule?)` | [WHATWG fill](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fill-dev) | partial |
 | `stroke(path?)` | [WHATWG stroke](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroke-dev) | partial |
 | `clip(pathOrRule?)` | [WHATWG clip](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-clip-dev) | waiting |
 | `isPointInPath(...)` | [WHATWG isPointInPath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ispointinpath-dev) | waiting |
@@ -90,10 +90,10 @@
 | `scrollPathIntoView(...)` | [WHATWG scrollPathIntoView](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-scrollpathintoview-dev) | not-planned |
 | `fillText(text, x, y, maxWidth?)` | [WHATWG fillText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-filltext-dev) | waiting |
 | `strokeText(text, x, y, maxWidth?)` | [WHATWG strokeText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroketext-dev) | partial |
-| `measureText(text)` | [WHATWG measureText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-measuretext-dev) | waiting |
-| `drawImage(...)` | [WHATWG drawImage](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-drawimage-dev) | waiting |
-| `createImageData(...)` | [WHATWG createImageData](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createimagedata-dev) | waiting |
+| `measureText(text)` | [WHATWG measureText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-measuretext-dev) | partial |
+| `drawImage(...)` | [WHATWG drawImage](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-drawimage-dev) | partial |
+| `createImageData(...)` | [WHATWG createImageData](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createimagedata-dev) | partial |
 | `getImageData(sx, sy, sw, sh, settings?)` | [WHATWG getImageData](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-getimagedata-dev) | partial |
-| `putImageData(imageData, dx, dy, ...)` | [WHATWG putImageData](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-putimagedata-dev) | waiting |
-| `imageSmoothingEnabled` | [WHATWG imageSmoothingEnabled](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingenabled-dev) | waiting |
-| `imageSmoothingQuality` | [WHATWG imageSmoothingQuality](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingquality-dev) | waiting |
+| `putImageData(imageData, dx, dy, ...)` | [WHATWG putImageData](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-putimagedata-dev) | done |
+| `imageSmoothingEnabled` | [WHATWG imageSmoothingEnabled](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingenabled-dev) | done |
+| `imageSmoothingQuality` | [WHATWG imageSmoothingQuality](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingquality-dev) | done |

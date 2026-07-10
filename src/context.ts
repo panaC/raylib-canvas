@@ -11,13 +11,13 @@ export interface Canvas2DContext {
    * Current fill style for filled shapes.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fillstyle-dev
    */
-  fillStyle: string;
+  fillStyle: string | CanvasGradient | CanvasPattern;
 
   /**
    * Current stroke style for stroked shapes.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokestyle-dev
    */
-  strokeStyle: string;
+  strokeStyle: string | CanvasGradient | CanvasPattern;
 
   /**
    * Alpha multiplier applied to drawing operations.
@@ -134,10 +134,76 @@ export interface Canvas2DContext {
   textRendering: CanvasTextRendering;
 
   /**
+   * Whether scaled images are smoothed.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingenabled-dev
+   */
+  imageSmoothingEnabled: boolean;
+
+  /**
+   * Quality hint used when smoothing scaled images.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingquality-dev
+   */
+  imageSmoothingQuality: CanvasImageSmoothingQuality;
+
+  /**
+   * Horizontal distance a shadow is offset from shapes.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowoffsetx-dev
+   */
+  shadowOffsetX: number;
+
+  /**
+   * Vertical distance a shadow is offset from shapes.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowoffsety-dev
+   */
+  shadowOffsetY: number;
+
+  /**
+   * Blur radius applied to shadows.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowblur-dev
+   */
+  shadowBlur: number;
+
+  /**
+   * CSS color used for shadows.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-shadowcolor-dev
+   */
+  shadowColor: string;
+
+  /**
+   * Filter applied to drawing operations.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-filter-dev
+   */
+  filter: string;
+
+  /**
    * Returns the live RGBA backing pixels for encoding and diagnostics.
    * This is a deliberate package extension, not part of the web Canvas API.
    */
   getPixels(): Uint8ClampedArray;
+
+  /**
+   * Creates a linear gradient style.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createlineargradient-dev
+   */
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradient;
+
+  /**
+   * Creates a radial gradient style.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createradialgradient-dev
+   */
+  createRadialGradient(x0: number, y0: number, r0: number, x1: number, y1: number, r1: number): CanvasGradient;
+
+  /**
+   * Creates a conic gradient style.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createconicgradient-dev
+   */
+  createConicGradient(startAngle: number, x: number, y: number): CanvasGradient;
+
+  /**
+   * Creates a pattern style from another canvas.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createpattern-dev
+   */
+  createPattern(image: Canvas, repetition?: string | null): CanvasPattern | null;
 
   /**
    * Saves the current drawing state.
@@ -173,6 +239,7 @@ export interface Canvas2DContext {
    * Fills the current path or the supplied path.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fill-dev
    */
+  fill(fillRule?: CanvasFillRule): void;
   fill(path?: CanvasPath2D, fillRule?: CanvasFillRule): void;
 
   /**
@@ -186,6 +253,30 @@ export interface Canvas2DContext {
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroketext-dev
    */
   strokeText(text: unknown, x: number, y: number, maxWidth?: number): void;
+
+  /**
+   * Returns metrics for text using the current text styles.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-measuretext-dev
+   */
+  measureText(text: unknown): CanvasTextMetrics;
+
+  /**
+   * Draws another canvas into this canvas.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-drawimage-dev
+   */
+  drawImage(image: Canvas, dx: number, dy: number): void;
+  drawImage(image: Canvas, dx: number, dy: number, dWidth: number, dHeight: number): void;
+  drawImage(
+    image: Canvas,
+    sx: number,
+    sy: number,
+    sWidth: number,
+    sHeight: number,
+    dx: number,
+    dy: number,
+    dWidth: number,
+    dHeight: number
+  ): void;
 
   /**
    * Starts a new path.
@@ -212,16 +303,83 @@ export interface Canvas2DContext {
   rect(x: number, y: number, width: number, height: number): void;
 
   /**
+   * Adds a quadratic Bezier curve to the current path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-quadraticcurveto-dev
+   */
+  quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void;
+
+  /**
+   * Adds a cubic Bezier curve to the current path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-beziercurveto-dev
+   */
+  bezierCurveTo(cp1x: number, cp1y: number, cp2x: number, cp2y: number, x: number, y: number): void;
+
+  /**
+   * Adds an arc connected by tangents to the current path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-arcto-dev
+   */
+  arcTo(x1: number, y1: number, x2: number, y2: number, radius: number): void;
+
+  /**
+   * Adds a rounded rectangle to the current path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-roundrect-dev
+   */
+  roundRect(x: number, y: number, width: number, height: number, radii?: number | DOMPointInit | Array<number | DOMPointInit>): void;
+
+  /**
+   * Adds a circular arc to the current path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-arc-dev
+   */
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, counterclockwise?: boolean): void;
+
+  /**
+   * Adds an elliptical arc to the current path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ellipse-dev
+   */
+  ellipse(
+    x: number,
+    y: number,
+    radiusX: number,
+    radiusY: number,
+    rotation: number,
+    startAngle: number,
+    endAngle: number,
+    counterclockwise?: boolean
+  ): void;
+
+  /**
    * Closes the current subpath.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-closepath-dev
    */
   closePath(): void;
 
   /**
+   * Creates a transparent ImageData object.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createimagedata-dev
+   */
+  createImageData(width: number, height: number, settings?: ImageDataSettings): CanvasImageData;
+  createImageData(imageData: CanvasImageData): CanvasImageData;
+
+  /**
    * Returns a copy of pixels from the requested rectangle.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-getimagedata-dev
    */
-  getImageData(sx: number, sy: number, sw: number, sh: number): CanvasImageData;
+  getImageData(sx: number, sy: number, sw: number, sh: number, settings?: ImageDataSettings): CanvasImageData;
+
+  /**
+   * Writes ImageData pixels to the backing store.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-putimagedata-dev
+   */
+  putImageData(imageData: CanvasImageData, dx: number, dy: number): void;
+  putImageData(
+    imageData: CanvasImageData,
+    dx: number,
+    dy: number,
+    dirtyX: number,
+    dirtyY: number,
+    dirtyWidth: number,
+    dirtyHeight: number
+  ): void;
 
   /**
    * Adds a transform to the current transform matrix.
@@ -318,6 +476,8 @@ type CanvasFontVariantCaps =
   | "unicase"
   | "titling-caps";
 type CanvasTextRendering = "auto" | "optimizeSpeed" | "optimizeLegibility" | "geometricPrecision";
+type CanvasImageSmoothingQuality = "low" | "medium" | "high";
+type CanvasImageDataColorSpace = "srgb";
 
 type Matrix2D = readonly [number, number, number, number, number, number];
 
@@ -341,14 +501,25 @@ type PathCommand =
       readonly y: number;
     }
   | { readonly type: "rect"; readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+  | {
+      readonly type: "ellipse";
+      readonly x: number;
+      readonly y: number;
+      readonly radiusX: number;
+      readonly radiusY: number;
+      readonly rotation: number;
+      readonly startAngle: number;
+      readonly endAngle: number;
+      readonly counterclockwise: boolean;
+    }
   | { readonly type: "closePath" };
 
 type CanvasState = {
-  readonly fillStyle: string;
-  readonly fillColor: Rgba;
+  readonly fillStyle: string | CanvasGradient | CanvasPattern;
+  readonly fillPaint: CanvasPaintStyle;
   readonly transform: Matrix2D;
-  readonly strokeStyle: string;
-  readonly strokeColor: Rgba;
+  readonly strokeStyle: string | CanvasGradient | CanvasPattern;
+  readonly strokePaint: CanvasPaintStyle;
   readonly fillRule: CanvasFillRule;
   readonly globalAlpha: number;
   readonly lineWidth: number;
@@ -366,9 +537,66 @@ type CanvasState = {
   readonly fontStretch: CanvasFontStretch;
   readonly fontVariantCaps: CanvasFontVariantCaps;
   readonly textRendering: CanvasTextRendering;
+  readonly imageSmoothingEnabled: boolean;
+  readonly imageSmoothingQuality: CanvasImageSmoothingQuality;
   readonly filter: string;
+  readonly filterOpacity: number;
+  readonly shadowOffsetX: number;
+  readonly shadowOffsetY: number;
+  readonly shadowBlur: number;
+  readonly shadowColor: string;
+  readonly shadowRgba: Rgba;
   readonly lineDash: readonly number[];
   readonly lineDashOffset: number;
+};
+
+type CanvasGradientDefinition =
+  | { readonly type: "linear"; readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }
+  | {
+      readonly type: "radial";
+      readonly x0: number;
+      readonly y0: number;
+      readonly r0: number;
+      readonly x1: number;
+      readonly y1: number;
+      readonly r1: number;
+    }
+  | { readonly type: "conic"; readonly startAngle: number; readonly x: number; readonly y: number };
+
+type CanvasGradientStop = {
+  readonly offset: number;
+  readonly rgba: Rgba;
+  readonly order: number;
+};
+
+type CanvasPatternRepetition = "repeat" | "repeat-x" | "repeat-y" | "no-repeat";
+
+type CanvasPaintStyle =
+  | { readonly type: "color"; readonly rgba: Rgba }
+  | { readonly type: "gradient"; readonly gradient: CanvasGradient }
+  | { readonly type: "pattern"; readonly pattern: CanvasPattern };
+
+type Paint = {
+  readonly sample: (x: number, y: number) => Rgba;
+};
+
+type DrawImageGeometry = {
+  readonly sourceCanvas: Canvas;
+  readonly sourceX: number;
+  readonly sourceY: number;
+  readonly sourceWidth: number;
+  readonly sourceHeight: number;
+  readonly destX: number;
+  readonly destY: number;
+  readonly destWidth: number;
+  readonly destHeight: number;
+};
+
+type NormalizedRect = {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
 };
 
 const NAMED_COLORS: Record<string, Rgba> = {
@@ -442,6 +670,7 @@ const CANVAS_TEXT_RENDERINGS = new Set<string>([
   "optimizeLegibility",
   "geometricPrecision"
 ]);
+const CANVAS_IMAGE_SMOOTHING_QUALITIES = new Set<string>(["low", "medium", "high"]);
 const CSS_LENGTH_UNITS = new Set<string>([
   "cap",
   "ch",
@@ -577,6 +806,104 @@ export class CanvasPath2D {
     this.#commands.push({ type: "rect", x, y, width, height });
   }
 
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, counterclockwise = false): void {
+    this.ellipse(x, y, radius, radius, 0, startAngle, endAngle, counterclockwise);
+  }
+
+  ellipse(
+    x: number,
+    y: number,
+    radiusX: number,
+    radiusY: number,
+    rotation: number,
+    startAngle: number,
+    endAngle: number,
+    counterclockwise = false
+  ): void {
+    if (radiusX < 0 || radiusY < 0) {
+      throw createIndexSizeError("The radius provided is negative.");
+    }
+
+    if (![x, y, radiusX, radiusY, rotation, startAngle, endAngle].every(Number.isFinite)) {
+      return;
+    }
+
+    this.#commands.push({
+      type: "ellipse",
+      x,
+      y,
+      radiusX,
+      radiusY,
+      rotation,
+      startAngle,
+      endAngle,
+      counterclockwise: Boolean(counterclockwise)
+    });
+  }
+
+  arcTo(x1: number, y1: number, x2: number, y2: number, radius: number): void {
+    if (radius < 0) {
+      throw createIndexSizeError("The radius provided is negative.");
+    }
+
+    if (![x1, y1, x2, y2, radius].every(Number.isFinite)) {
+      return;
+    }
+
+    const current = currentPathPoint(this.#commands) ?? { x: 0, y: 0 };
+    const tangent = arcToSegments(current, { x: x1, y: y1 }, { x: x2, y: y2 }, radius);
+
+    if (!tangent) {
+      this.lineTo(x1, y1);
+      return;
+    }
+
+    this.lineTo(tangent.start.x, tangent.start.y);
+    this.#commands.push({
+      type: "ellipse",
+      x: tangent.center.x,
+      y: tangent.center.y,
+      radiusX: radius,
+      radiusY: radius,
+      rotation: 0,
+      startAngle: tangent.startAngle,
+      endAngle: tangent.endAngle,
+      counterclockwise: tangent.counterclockwise
+    });
+  }
+
+  roundRect(x: number, y: number, width: number, height: number, radii: number | DOMPointInit | Array<number | DOMPointInit> = 0): void {
+    if (![x, y, width, height].every(Number.isFinite)) {
+      return;
+    }
+
+    const corners = normalizeRoundRectRadii(radii);
+    const scale = Math.min(
+      1,
+      Math.abs(width) / Math.max(corners[0].x + corners[1].x, corners[3].x + corners[2].x, 1),
+      Math.abs(height) / Math.max(corners[0].y + corners[3].y, corners[1].y + corners[2].y, 1)
+    );
+    const [topLeft, topRight, bottomRight, bottomLeft] = corners.map((corner) => ({
+      x: corner.x * scale,
+      y: corner.y * scale
+    }));
+    const left = width < 0 ? x + width : x;
+    const right = width < 0 ? x : x + width;
+    const top = height < 0 ? y + height : y;
+    const bottom = height < 0 ? y : y + height;
+
+    this.moveTo(left + topLeft.x, top);
+    this.lineTo(right - topRight.x, top);
+    appendRoundRectCorner(this, right - topRight.x, top + topRight.y, topRight, -Math.PI / 2, 0);
+    this.lineTo(right, bottom - bottomRight.y);
+    appendRoundRectCorner(this, right - bottomRight.x, bottom - bottomRight.y, bottomRight, 0, Math.PI / 2);
+    this.lineTo(left + bottomLeft.x, bottom);
+    appendRoundRectCorner(this, left + bottomLeft.x, bottom - bottomLeft.y, bottomLeft, Math.PI / 2, Math.PI);
+    this.lineTo(left, top + topLeft.y);
+    appendRoundRectCorner(this, left + topLeft.x, top + topLeft.y, topLeft, Math.PI, (Math.PI * 3) / 2);
+    this.closePath();
+  }
+
   closePath(): void {
     this.#commands.push({ type: "closePath" });
   }
@@ -594,6 +921,21 @@ export class CanvasPath2D {
         const topLeft = transformPoint(matrix, command.x, command.y);
         const bottomRight = transformPoint(matrix, command.x + command.width, command.y + command.height);
         this.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+        continue;
+      }
+
+      if (command.type === "ellipse") {
+        const center = transformPoint(matrix, command.x, command.y);
+        this.ellipse(
+          center.x,
+          center.y,
+          command.radiusX,
+          command.radiusY,
+          command.rotation,
+          command.startAngle,
+          command.endAngle,
+          command.counterclockwise
+        );
         continue;
       }
 
@@ -735,11 +1077,33 @@ export class CanvasImageData {
   readonly data: Uint8ClampedArray;
   readonly width: number;
   readonly height: number;
-  readonly colorSpace = "srgb";
+  readonly colorSpace: CanvasImageDataColorSpace;
 
-  constructor(data: Uint8ClampedArray, width: number, height: number) {
-    assertNonNegativeInteger(width, "width");
-    assertNonNegativeInteger(height, "height");
+  constructor(width: number, height: number, settings?: ImageDataSettings);
+  constructor(data: Uint8ClampedArray, width: number, height?: number, settings?: ImageDataSettings);
+  constructor(
+    dataOrWidth: Uint8ClampedArray | number,
+    widthOrHeight: number,
+    heightOrSettings?: number | ImageDataSettings,
+    settings?: ImageDataSettings
+  ) {
+    const colorSpace = normalizeImageDataColorSpace(
+      typeof heightOrSettings === "object" ? heightOrSettings : settings
+    );
+    const data =
+      dataOrWidth instanceof Uint8ClampedArray
+        ? dataOrWidth
+        : new Uint8ClampedArray(toImageDataDimension(dataOrWidth, "width") * toImageDataDimension(widthOrHeight, "height") * 4);
+    const width = dataOrWidth instanceof Uint8ClampedArray ? toImageDataDimension(widthOrHeight, "width") : toImageDataDimension(dataOrWidth, "width");
+    const height =
+      dataOrWidth instanceof Uint8ClampedArray
+        ? heightOrSettings === undefined || typeof heightOrSettings === "object"
+          ? data.length / 4 / width
+          : toImageDataDimension(heightOrSettings, "height")
+        : toImageDataDimension(widthOrHeight, "height");
+
+    assertPositiveInteger(width, "width");
+    assertPositiveInteger(height, "height");
 
     if (data.length !== width * height * 4) {
       throw new Error("ImageData data length must match width * height * 4");
@@ -748,14 +1112,136 @@ export class CanvasImageData {
     this.data = data;
     this.width = width;
     this.height = height;
+    this.colorSpace = colorSpace;
+  }
+}
+
+export class CanvasTextMetrics {
+  readonly width: number;
+  readonly actualBoundingBoxLeft: number;
+  readonly actualBoundingBoxRight: number;
+  readonly fontBoundingBoxAscent: number;
+  readonly fontBoundingBoxDescent: number;
+  readonly actualBoundingBoxAscent: number;
+  readonly actualBoundingBoxDescent: number;
+  readonly emHeightAscent: number;
+  readonly emHeightDescent: number;
+  readonly hangingBaseline: number;
+  readonly alphabeticBaseline = 0;
+  readonly ideographicBaseline: number;
+
+  constructor(width: number, fontSize: number) {
+    this.width = width;
+    this.actualBoundingBoxLeft = 0;
+    this.actualBoundingBoxRight = width;
+    this.fontBoundingBoxAscent = fontSize * 0.8;
+    this.fontBoundingBoxDescent = fontSize * 0.2;
+    this.actualBoundingBoxAscent = fontSize * 0.8;
+    this.actualBoundingBoxDescent = fontSize * 0.2;
+    this.emHeightAscent = fontSize * 0.8;
+    this.emHeightDescent = fontSize * 0.2;
+    this.hangingBaseline = fontSize * 0.6;
+    this.ideographicBaseline = -fontSize * 0.2;
+  }
+}
+
+export class CanvasGradient {
+  readonly #definition: CanvasGradientDefinition;
+  readonly #stops: CanvasGradientStop[] = [];
+  #nextStopOrder = 0;
+
+  constructor(definition: CanvasGradientDefinition) {
+    this.#definition = definition;
+  }
+
+  addColorStop(offset: number, color: string): void {
+    const stopOffset = Number(offset);
+
+    if (!Number.isFinite(stopOffset)) {
+      throw new TypeError("The color stop offset must be finite.");
+    }
+
+    if (stopOffset < 0 || stopOffset > 1) {
+      throw createIndexSizeError("The color stop offset must be finite and between 0 and 1.");
+    }
+
+    const parsedColor = parseColor(String(color));
+    if (!parsedColor) {
+      throw createSyntaxError("The color stop color is not a supported CSS color.");
+    }
+
+    this.#stops.push({
+      offset: stopOffset,
+      rgba: parsedColor.rgba,
+      order: this.#nextStopOrder
+    });
+    this.#nextStopOrder += 1;
+    this.#stops.sort((left, right) => left.offset - right.offset || left.order - right.order);
+  }
+
+  sample(x: number, y: number): Rgba {
+    const stops = this.#stops;
+    if (stops.length === 0) {
+      return TRANSPARENT_BLACK;
+    }
+
+    if (this.#definition.type === "linear") {
+      const { x0, y0, x1, y1 } = this.#definition;
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const lengthSquared = dx * dx + dy * dy;
+      return sampleGradientStops(stops, lengthSquared === 0 ? 0 : ((x - x0) * dx + (y - y0) * dy) / lengthSquared);
+    }
+
+    if (this.#definition.type === "conic") {
+      const angle = positiveModulo(Math.atan2(y - this.#definition.y, x - this.#definition.x) - this.#definition.startAngle, Math.PI * 2);
+      return sampleGradientStops(stops, angle / (Math.PI * 2));
+    }
+
+    const { x0, y0, r0, x1, y1, r1 } = this.#definition;
+    const centerDistance = Math.hypot(x1 - x0, y1 - y0);
+    const radiusDistance = r1 - r0;
+
+    if (centerDistance === 0 && radiusDistance === 0) {
+      return sampleGradientStops(stops, 0);
+    }
+
+    if (centerDistance === 0) {
+      return sampleGradientStops(stops, (Math.hypot(x - x0, y - y0) - r0) / radiusDistance);
+    }
+
+    return sampleGradientStops(stops, Math.hypot(x - x0, y - y0) / Math.max(centerDistance + r1 - r0, 1e-9));
+  }
+}
+
+export class CanvasPattern {
+  readonly image: Canvas;
+  readonly repetition: CanvasPatternRepetition;
+
+  constructor(image: Canvas, repetition: CanvasPatternRepetition) {
+    this.image = image;
+    this.repetition = repetition;
+  }
+
+  sample(x: number, y: number): Rgba {
+    const sourceX = patternCoordinate(Math.floor(x), this.image.width, this.repetition === "repeat" || this.repetition === "repeat-x");
+    const sourceY = patternCoordinate(Math.floor(y), this.image.height, this.repetition === "repeat" || this.repetition === "repeat-y");
+
+    if (sourceX === undefined || sourceY === undefined) {
+      return TRANSPARENT_BLACK;
+    }
+
+    const source = this.image.getContext("2d").getPixels();
+    const offset = (sourceY * this.image.width + sourceX) * 4;
+    return [source[offset], source[offset + 1], source[offset + 2], source[offset + 3]];
   }
 }
 
 export abstract class Canvas2DRenderingContext implements Canvas2DContext {
-  #fillStyle = "#000000";
-  #fillColor: Rgba = [0, 0, 0, 255];
-  #strokeStyle = "#000000";
-  #strokeColor: Rgba = [0, 0, 0, 255];
+  #fillStyle: string | CanvasGradient | CanvasPattern = "#000000";
+  #fillPaint: CanvasPaintStyle = { type: "color", rgba: [0, 0, 0, 255] };
+  #strokeStyle: string | CanvasGradient | CanvasPattern = "#000000";
+  #strokePaint: CanvasPaintStyle = { type: "color", rgba: [0, 0, 0, 255] };
   #transform: Matrix2D = IDENTITY_MATRIX;
   #currentPath = new CanvasPath2D();
   #stateStack: CanvasState[] = [];
@@ -777,9 +1263,16 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #fontStretch: CanvasFontStretch = "normal";
   #fontVariantCaps: CanvasFontVariantCaps = "normal";
   #textRendering: CanvasTextRendering = "auto";
+  #filter = "none";
+  #filterOpacity = 1;
+  #shadowOffsetX = 0;
+  #shadowOffsetY = 0;
+  #shadowBlur = 0;
+  #shadowColor = "rgba(0, 0, 0, 0)";
+  #shadowRgba: Rgba = [0, 0, 0, 0];
+  #imageSmoothingEnabled = true;
+  #imageSmoothingQuality: CanvasImageSmoothingQuality = "low";
   fillRule: CanvasFillRule = "nonzero";
-  filter = "none";
-  imageSmoothingEnabled = true;
 
   constructor(readonly canvas: Canvas) {}
 
@@ -787,34 +1280,34 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
   protected abstract fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void;
 
-  get fillStyle(): string {
+  get fillStyle(): string | CanvasGradient | CanvasPattern {
     return this.#fillStyle;
   }
 
-  set fillStyle(value: string) {
-    const color = parseColor(String(value));
+  set fillStyle(value: string | CanvasGradient | CanvasPattern) {
+    const paint = parseCanvasPaintStyle(value);
 
-    if (!color) {
+    if (!paint) {
       return;
     }
 
-    this.#fillStyle = color.serialized;
-    this.#fillColor = color.rgba;
+    this.#fillStyle = paint.style;
+    this.#fillPaint = paint.paint;
   }
 
-  get strokeStyle(): string {
+  get strokeStyle(): string | CanvasGradient | CanvasPattern {
     return this.#strokeStyle;
   }
 
-  set strokeStyle(value: string) {
-    const color = parseColor(String(value));
+  set strokeStyle(value: string | CanvasGradient | CanvasPattern) {
+    const paint = parseCanvasPaintStyle(value);
 
-    if (!color) {
+    if (!paint) {
       return;
     }
 
-    this.#strokeStyle = color.serialized;
-    this.#strokeColor = color.rgba;
+    this.#strokeStyle = paint.style;
+    this.#strokePaint = paint.paint;
   }
 
   get globalAlpha(): number {
@@ -1037,13 +1530,139 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#textRendering = value;
   }
 
+  get imageSmoothingEnabled(): boolean {
+    return this.#imageSmoothingEnabled;
+  }
+
+  set imageSmoothingEnabled(value: boolean) {
+    this.#imageSmoothingEnabled = Boolean(value);
+  }
+
+  get imageSmoothingQuality(): CanvasImageSmoothingQuality {
+    return this.#imageSmoothingQuality;
+  }
+
+  set imageSmoothingQuality(value: CanvasImageSmoothingQuality) {
+    if (!isCanvasImageSmoothingQuality(value)) {
+      return;
+    }
+
+    this.#imageSmoothingQuality = value;
+  }
+
+  get shadowOffsetX(): number {
+    return this.#shadowOffsetX;
+  }
+
+  set shadowOffsetX(value: number) {
+    const offset = Number(value);
+
+    if (!Number.isFinite(offset)) {
+      return;
+    }
+
+    this.#shadowOffsetX = offset;
+  }
+
+  get shadowOffsetY(): number {
+    return this.#shadowOffsetY;
+  }
+
+  set shadowOffsetY(value: number) {
+    const offset = Number(value);
+
+    if (!Number.isFinite(offset)) {
+      return;
+    }
+
+    this.#shadowOffsetY = offset;
+  }
+
+  get shadowBlur(): number {
+    return this.#shadowBlur;
+  }
+
+  set shadowBlur(value: number) {
+    const blur = Number(value);
+
+    if (!Number.isFinite(blur) || blur < 0) {
+      return;
+    }
+
+    this.#shadowBlur = blur;
+  }
+
+  get shadowColor(): string {
+    return this.#shadowColor;
+  }
+
+  set shadowColor(value: string) {
+    const color = parseColor(String(value));
+
+    if (!color) {
+      return;
+    }
+
+    this.#shadowColor = color.serialized;
+    this.#shadowRgba = color.rgba;
+  }
+
+  get filter(): string {
+    return this.#filter;
+  }
+
+  set filter(value: string) {
+    const filter = parseCanvasFilter(String(value));
+
+    if (!filter) {
+      return;
+    }
+
+    this.#filter = filter.serialized;
+    this.#filterOpacity = filter.opacity;
+  }
+
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradient {
+    assertFiniteNumbers([x0, y0, x1, y1], "createLinearGradient");
+    return new CanvasGradient({ type: "linear", x0, y0, x1, y1 });
+  }
+
+  createRadialGradient(x0: number, y0: number, r0: number, x1: number, y1: number, r1: number): CanvasGradient {
+    assertFiniteNumbers([x0, y0, r0, x1, y1, r1], "createRadialGradient");
+
+    if (r0 < 0 || r1 < 0) {
+      throw createIndexSizeError("The radius provided is negative.");
+    }
+
+    return new CanvasGradient({ type: "radial", x0, y0, r0, x1, y1, r1 });
+  }
+
+  createConicGradient(startAngle: number, x: number, y: number): CanvasGradient {
+    assertFiniteNumbers([startAngle, x, y], "createConicGradient");
+    return new CanvasGradient({ type: "conic", startAngle, x, y });
+  }
+
+  createPattern(image: Canvas, repetition: string | null = "repeat"): CanvasPattern | null {
+    const normalized = normalizePatternRepetition(repetition);
+
+    if (!normalized) {
+      throw createSyntaxError("The repetition value is not supported.");
+    }
+
+    if (!isCanvasImageSource(image)) {
+      return null;
+    }
+
+    return new CanvasPattern(image, normalized);
+  }
+
   save(): void {
     this.#stateStack.push({
       fillStyle: this.#fillStyle,
-      fillColor: this.#fillColor,
+      fillPaint: this.#fillPaint,
       transform: this.#transform,
       strokeStyle: this.#strokeStyle,
-      strokeColor: this.#strokeColor,
+      strokePaint: this.#strokePaint,
       fillRule: this.fillRule,
       globalAlpha: this.globalAlpha,
       lineWidth: this.lineWidth,
@@ -1061,7 +1680,15 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       fontStretch: this.fontStretch,
       fontVariantCaps: this.fontVariantCaps,
       textRendering: this.textRendering,
+      imageSmoothingEnabled: this.imageSmoothingEnabled,
+      imageSmoothingQuality: this.imageSmoothingQuality,
       filter: this.filter,
+      filterOpacity: this.#filterOpacity,
+      shadowOffsetX: this.shadowOffsetX,
+      shadowOffsetY: this.shadowOffsetY,
+      shadowBlur: this.shadowBlur,
+      shadowColor: this.shadowColor,
+      shadowRgba: this.#shadowRgba,
       lineDash: [...this.#lineDash],
       lineDashOffset: this.lineDashOffset
     });
@@ -1075,10 +1702,10 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
 
     this.#fillStyle = state.fillStyle;
-    this.#fillColor = state.fillColor;
+    this.#fillPaint = state.fillPaint;
     this.#transform = state.transform;
     this.#strokeStyle = state.strokeStyle;
-    this.#strokeColor = state.strokeColor;
+    this.#strokePaint = state.strokePaint;
     this.fillRule = state.fillRule;
     this.globalAlpha = state.globalAlpha;
     this.lineWidth = state.lineWidth;
@@ -1096,7 +1723,15 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.fontStretch = state.fontStretch;
     this.fontVariantCaps = state.fontVariantCaps;
     this.textRendering = state.textRendering;
-    this.filter = state.filter;
+    this.#imageSmoothingEnabled = state.imageSmoothingEnabled;
+    this.#imageSmoothingQuality = state.imageSmoothingQuality;
+    this.#filter = state.filter;
+    this.#filterOpacity = state.filterOpacity;
+    this.#shadowOffsetX = state.shadowOffsetX;
+    this.#shadowOffsetY = state.shadowOffsetY;
+    this.#shadowBlur = state.shadowBlur;
+    this.#shadowColor = state.shadowColor;
+    this.#shadowRgba = state.shadowRgba;
     this.#lineDash = [...state.lineDash];
     this.lineDashOffset = state.lineDashOffset;
   }
@@ -1106,7 +1741,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   }
 
   fillRect(x: number, y: number, width: number, height: number): void {
-    this.#fillTransformedRect(x, y, width, height, this.#effectiveFillColor());
+    this.#drawShadowRect(x, y, width, height);
+    this.#fillTransformedRect(x, y, width, height, this.#paintFor(this.#fillPaint));
   }
 
   strokeRect(x: number, y: number, width: number, height: number): void {
@@ -1116,23 +1752,30 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
     const path = new CanvasPath2D();
     path.rect(x, y, width, height);
+    this.#drawShadowStroke(path);
     this.#strokePath(path);
   }
 
-  fill(path: CanvasPath2D = this.#currentPath, _fillRule: CanvasFillRule = this.fillRule): void {
-    for (const polygon of pathToPolygons(path, this.#transform)) {
-      fillPolygon(
-        this.getPixels(),
-        this.canvas.width,
-        this.canvas.height,
-        polygon,
-        this.#effectiveFillColor(),
-        this.#globalCompositeOperation
-      );
-    }
+  fill(fillRule?: CanvasFillRule): void;
+  fill(path?: CanvasPath2D, fillRule?: CanvasFillRule): void;
+  fill(pathOrRule: CanvasPath2D | CanvasFillRule = this.#currentPath, fillRule: CanvasFillRule = this.fillRule): void {
+    const path = typeof pathOrRule === "string" ? this.#currentPath : pathOrRule;
+    const rule = typeof pathOrRule === "string" ? pathOrRule : fillRule;
+
+    this.#drawShadowFill(path, rule);
+    fillPolygons(
+      this.getPixels(),
+      this.canvas.width,
+      this.canvas.height,
+      pathToPolygons(path, this.#transform),
+      this.#paintFor(this.#fillPaint),
+      this.#globalCompositeOperation,
+      rule
+    );
   }
 
   stroke(path: CanvasPath2D = this.#currentPath): void {
+    this.#drawShadowStroke(path);
     this.#strokePath(path);
   }
 
@@ -1172,7 +1815,64 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       path.rect(left, top, glyphWidth * 0.8 * widthScale, glyphHeight * 0.8);
     }
 
+    this.#drawShadowStroke(path);
     this.#strokePath(path);
+  }
+
+  measureText(text: unknown): CanvasTextMetrics {
+    const textString = String(text);
+    const metrics = parseFontMetrics(this.#font);
+    return new CanvasTextMetrics(measureFallbackTextWidth(textString, metrics.size, this.#letterSpacing, this.#wordSpacing), metrics.size);
+  }
+
+  drawImage(image: Canvas, dx: number, dy: number): void;
+  drawImage(image: Canvas, dx: number, dy: number, dWidth: number, dHeight: number): void;
+  drawImage(
+    image: Canvas,
+    sx: number,
+    sy: number,
+    sWidth: number,
+    sHeight: number,
+    dx: number,
+    dy: number,
+    dWidth: number,
+    dHeight: number
+  ): void;
+  drawImage(image: Canvas, ...args: number[]): void {
+    if (!isCanvasImageSource(image)) {
+      throw createTypeMismatchError("The image argument is not a supported CanvasImageSource.");
+    }
+
+    const geometry = normalizeDrawImageArguments(image, args);
+
+    if (!geometry) {
+      throw new TypeError("drawImage() requires 3, 5, or 9 arguments.");
+    }
+
+    if (geometry.sourceWidth === 0 || geometry.sourceHeight === 0) {
+      throw createIndexSizeError("The source width or height is 0.");
+    }
+
+    if (geometry.destWidth === 0 || geometry.destHeight === 0 || geometry.sourceCanvas.width === 0 || geometry.sourceCanvas.height === 0) {
+      return;
+    }
+
+    if (
+      ![
+        geometry.sourceX,
+        geometry.sourceY,
+        geometry.sourceWidth,
+        geometry.sourceHeight,
+        geometry.destX,
+        geometry.destY,
+        geometry.destWidth,
+        geometry.destHeight
+      ].every(Number.isFinite)
+    ) {
+      return;
+    }
+
+    this.#drawCanvasImage(geometry);
   }
 
   beginPath(): void {
@@ -1191,15 +1891,70 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#currentPath.rect(x, y, width, height);
   }
 
+  quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void {
+    this.#currentPath.quadraticCurveTo(cpx, cpy, x, y);
+  }
+
+  bezierCurveTo(cp1x: number, cp1y: number, cp2x: number, cp2y: number, x: number, y: number): void {
+    this.#currentPath.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+  }
+
+  arcTo(x1: number, y1: number, x2: number, y2: number, radius: number): void {
+    this.#currentPath.arcTo(x1, y1, x2, y2, radius);
+  }
+
+  roundRect(x: number, y: number, width: number, height: number, radii?: number | DOMPointInit | Array<number | DOMPointInit>): void {
+    this.#currentPath.roundRect(x, y, width, height, radii);
+  }
+
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, counterclockwise = false): void {
+    this.#currentPath.arc(x, y, radius, startAngle, endAngle, counterclockwise);
+  }
+
+  ellipse(
+    x: number,
+    y: number,
+    radiusX: number,
+    radiusY: number,
+    rotation: number,
+    startAngle: number,
+    endAngle: number,
+    counterclockwise = false
+  ): void {
+    this.#currentPath.ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle, counterclockwise);
+  }
+
   closePath(): void {
     this.#currentPath.closePath();
   }
 
-  getImageData(sx: number, sy: number, sw: number, sh: number): CanvasImageData {
+  createImageData(width: number, height: number, settings?: ImageDataSettings): CanvasImageData;
+  createImageData(imageData: CanvasImageData): CanvasImageData;
+  createImageData(widthOrImageData: number | CanvasImageData, height?: number, settings?: ImageDataSettings): CanvasImageData {
+    if (widthOrImageData instanceof CanvasImageData) {
+      return new CanvasImageData(widthOrImageData.width, widthOrImageData.height, { colorSpace: widthOrImageData.colorSpace });
+    }
+
+    if (height === undefined) {
+      throw new TypeError("createImageData() requires width and height.");
+    }
+
+    const width = toWebIDLLong(widthOrImageData, "width");
+    const imageHeight = toWebIDLLong(height, "height");
+
+    if (width === 0 || imageHeight === 0) {
+      throw createIndexSizeError("The source width or height is 0.");
+    }
+
+    return new CanvasImageData(Math.abs(width), Math.abs(imageHeight), settings);
+  }
+
+  getImageData(sx: number, sy: number, sw: number, sh: number, settings?: ImageDataSettings): CanvasImageData {
     const sourceX = toWebIDLLong(sx, "sx");
     const sourceY = toWebIDLLong(sy, "sy");
     const sourceWidth = toWebIDLLong(sw, "sw");
     const sourceHeight = toWebIDLLong(sh, "sh");
+    const colorSpace = normalizeImageDataColorSpace(settings);
 
     if (sourceWidth === 0 || sourceHeight === 0) {
       throw createIndexSizeError("The source width or height is 0.");
@@ -1230,7 +1985,69 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       }
     }
 
-    return new CanvasImageData(data, width, height);
+    return new CanvasImageData(data, width, height, { colorSpace });
+  }
+
+  putImageData(imageData: CanvasImageData, dx: number, dy: number): void;
+  putImageData(
+    imageData: CanvasImageData,
+    dx: number,
+    dy: number,
+    dirtyX: number,
+    dirtyY: number,
+    dirtyWidth: number,
+    dirtyHeight: number
+  ): void;
+  putImageData(
+    imageData: CanvasImageData,
+    dx: number,
+    dy: number,
+    dirtyX?: number,
+    dirtyY?: number,
+    dirtyWidth?: number,
+    dirtyHeight?: number
+  ): void {
+    if (!(imageData instanceof CanvasImageData)) {
+      throw new TypeError("putImageData() requires a CanvasImageData object.");
+    }
+
+    const destX = toWebIDLLong(dx, "dx");
+    const destY = toWebIDLLong(dy, "dy");
+    const dirtyLeftValue = toWebIDLLong(dirtyX ?? 0, "dirtyX");
+    const dirtyTopValue = toWebIDLLong(dirtyY ?? 0, "dirtyY");
+    const dirtyWidthValue = toWebIDLLong(dirtyWidth ?? imageData.width, "dirtyWidth");
+    const dirtyHeightValue = toWebIDLLong(dirtyHeight ?? imageData.height, "dirtyHeight");
+
+    if (dirtyWidthValue === 0 || dirtyHeightValue === 0) {
+      return;
+    }
+
+    const dirtyLeft = clamp(dirtyWidthValue < 0 ? dirtyLeftValue + dirtyWidthValue : dirtyLeftValue, 0, imageData.width);
+    const dirtyTop = clamp(dirtyHeightValue < 0 ? dirtyTopValue + dirtyHeightValue : dirtyTopValue, 0, imageData.height);
+    const dirtyRight = clamp(dirtyWidthValue < 0 ? dirtyLeftValue : dirtyLeftValue + dirtyWidthValue, 0, imageData.width);
+    const dirtyBottom = clamp(dirtyHeightValue < 0 ? dirtyTopValue : dirtyTopValue + dirtyHeightValue, 0, imageData.height);
+    const pixels = this.getPixels();
+
+    for (let sourceY = dirtyTop; sourceY < dirtyBottom; sourceY += 1) {
+      const targetY = destY + sourceY;
+      if (targetY < 0 || targetY >= this.canvas.height) {
+        continue;
+      }
+
+      for (let sourceX = dirtyLeft; sourceX < dirtyRight; sourceX += 1) {
+        const targetX = destX + sourceX;
+        if (targetX < 0 || targetX >= this.canvas.width) {
+          continue;
+        }
+
+        const sourceOffset = (sourceY * imageData.width + sourceX) * 4;
+        const targetOffset = (targetY * this.canvas.width + targetX) * 4;
+        pixels[targetOffset] = imageData.data[sourceOffset];
+        pixels[targetOffset + 1] = imageData.data[sourceOffset + 1];
+        pixels[targetOffset + 2] = imageData.data[sourceOffset + 2];
+        pixels[targetOffset + 3] = imageData.data[sourceOffset + 3];
+      }
+    }
   }
 
   transform(a: number, b: number, c: number, d: number, e: number, f: number): void {
@@ -1300,6 +2117,71 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     return [...this.#lineDash];
   }
 
+  #drawCanvasImage(geometry: DrawImageGeometry): void {
+    const sourceRect = normalizeRect(geometry.sourceX, geometry.sourceY, geometry.sourceWidth, geometry.sourceHeight);
+    const destRect = normalizeRect(geometry.destX, geometry.destY, geometry.destWidth, geometry.destHeight);
+    const clippedSource = clipSourceRect(sourceRect, geometry.sourceCanvas.width, geometry.sourceCanvas.height);
+
+    if (!clippedSource || destRect.width === 0 || destRect.height === 0) {
+      return;
+    }
+
+    const sourceScaleX = clippedSource.width / sourceRect.width;
+    const sourceScaleY = clippedSource.height / sourceRect.height;
+    const clippedDest: NormalizedRect = {
+      left: destRect.left + ((clippedSource.left - sourceRect.left) / sourceRect.width) * destRect.width,
+      top: destRect.top + ((clippedSource.top - sourceRect.top) / sourceRect.height) * destRect.height,
+      width: destRect.width * sourceScaleX,
+      height: destRect.height * sourceScaleY
+    };
+    const inverseTransform = new CanvasTransformMatrix(this.#transform).invertSelf();
+
+    if (
+      ![
+        inverseTransform.a,
+        inverseTransform.b,
+        inverseTransform.c,
+        inverseTransform.d,
+        inverseTransform.e,
+        inverseTransform.f
+      ].every(Number.isFinite)
+    ) {
+      return;
+    }
+
+    const bounds = transformedRectBounds(clippedDest, this.#transform, this.canvas.width, this.canvas.height);
+    const sourcePixels = geometry.sourceCanvas.getContext("2d").getPixels();
+    const targetPixels = this.getPixels();
+    const alpha = this.#globalAlpha * this.#filterOpacity;
+
+    for (let y = bounds.top; y < bounds.bottom; y += 1) {
+      for (let x = bounds.left; x < bounds.right; x += 1) {
+        const userPoint = transformPoint(matrixFromObject(inverseTransform), x + 0.5, y + 0.5);
+
+        if (
+          userPoint.x < clippedDest.left ||
+          userPoint.x >= clippedDest.left + clippedDest.width ||
+          userPoint.y < clippedDest.top ||
+          userPoint.y >= clippedDest.top + clippedDest.height
+        ) {
+          continue;
+        }
+
+        const u = (userPoint.x - clippedDest.left) / clippedDest.width;
+        const v = (userPoint.y - clippedDest.top) / clippedDest.height;
+        const sourceX = clippedSource.left + u * clippedSource.width;
+        const sourceY = clippedSource.top + v * clippedSource.height;
+        const color = applyAlpha(
+          this.#imageSmoothingEnabled
+            ? sampleBilinear(sourcePixels, geometry.sourceCanvas.width, geometry.sourceCanvas.height, sourceX, sourceY)
+            : sampleNearest(sourcePixels, geometry.sourceCanvas.width, geometry.sourceCanvas.height, sourceX, sourceY),
+          alpha
+        );
+        compositePixel(targetPixels, (y * this.canvas.width + x) * 4, color, this.#globalCompositeOperation);
+      }
+    }
+  }
+
   clip(_path?: CanvasPath2D, _fillRule?: CanvasFillRule): void {
     // Clipping is not implemented yet; pdf.js calls this only for clipped paths.
   }
@@ -1321,29 +2203,30 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
   }
 
-  #fillTransformedRect(x: number, y: number, width: number, height: number, color: Rgba): void {
+  #fillTransformedRect(x: number, y: number, width: number, height: number, paint: Paint): void {
     if (![x, y, width, height].every(Number.isFinite)) {
       return;
     }
 
     if (isIdentityMatrix(this.#transform)) {
-      this.#fillRectPixels(x, y, width, height, color);
+      this.#fillRectPixels(x, y, width, height, paint);
       return;
     }
 
     const path = new CanvasPath2D();
     path.rect(x, y, width, height);
-    for (const polygon of pathToPolygons(path, this.#transform)) {
-      fillPolygon(this.getPixels(), this.canvas.width, this.canvas.height, polygon, color, this.#globalCompositeOperation);
-    }
+    fillPolygons(
+      this.getPixels(),
+      this.canvas.width,
+      this.canvas.height,
+      pathToPolygons(path, this.#transform),
+      paint,
+      this.#globalCompositeOperation,
+      this.fillRule
+    );
   }
 
-  #fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void {
-    if (this.#globalCompositeOperation === "source-over" && color[3] === 255) {
-      this.fillRectPixels(x, y, width, height, color);
-      return;
-    }
-
+  #fillRectPixels(x: number, y: number, width: number, height: number, paint: Paint): void {
     const x2 = x + width;
     const y2 = y + height;
     const left = clamp(Math.trunc(Math.min(x, x2)), 0, this.canvas.width);
@@ -1354,19 +2237,12 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
     for (let py = top; py < bottom; py += 1) {
       for (let px = left; px < right; px += 1) {
-        compositePixel(pixels, (py * this.canvas.width + px) * 4, color, this.#globalCompositeOperation);
+        const color = paint.sample(px + 0.5, py + 0.5);
+        if (color[3] !== 0) {
+          compositePixel(pixels, (py * this.canvas.width + px) * 4, color, this.#globalCompositeOperation);
+        }
       }
     }
-  }
-
-  #effectiveFillColor(): Rgba {
-    const alpha = this.#globalAlpha;
-
-    if (alpha === 1) {
-      return this.#fillColor;
-    }
-
-    return [this.#fillColor[0], this.#fillColor[1], this.#fillColor[2], Math.round(this.#fillColor[3] * alpha)];
   }
 
   #strokePath(path: CanvasPath2D): void {
@@ -1377,7 +2253,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       path,
       this.#transform,
       {
-        color: this.#effectiveStrokeColor(),
+        paint: this.#paintFor(this.#strokePaint),
         operation: this.#globalCompositeOperation,
         lineWidth: this.#lineWidth,
         lineCap: this.#lineCap,
@@ -1389,21 +2265,86 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     );
   }
 
-  #effectiveStrokeColor(): Rgba {
-    const alpha = this.#globalAlpha;
+  #paintFor(style: CanvasPaintStyle): Paint {
+    const inverseTransform = new CanvasTransformMatrix(this.#transform).invertSelf();
+    const alpha = this.#globalAlpha * this.#filterOpacity;
+    return {
+      sample: (x, y) => {
+        const userPoint =
+          Number.isFinite(inverseTransform.a) && Number.isFinite(inverseTransform.d)
+            ? transformPoint(matrixFromObject(inverseTransform), x, y)
+            : { x, y };
+        return applyAlpha(sampleCanvasPaintStyle(style, userPoint.x, userPoint.y), alpha);
+      }
+    };
+  }
 
-    if (alpha === 1) {
-      return this.#strokeColor;
+  #shadowPaint(): Paint {
+    const color = applyAlpha(this.#shadowRgba, this.#globalAlpha);
+    return {
+      sample: () => color
+    };
+  }
+
+  #hasVisibleShadow(): boolean {
+    return this.#shadowRgba[3] !== 0 && (this.#shadowOffsetX !== 0 || this.#shadowOffsetY !== 0 || this.#shadowBlur !== 0);
+  }
+
+  #drawShadowRect(x: number, y: number, width: number, height: number): void {
+    if (!this.#hasVisibleShadow()) {
+      return;
     }
 
-    return [this.#strokeColor[0], this.#strokeColor[1], this.#strokeColor[2], Math.round(this.#strokeColor[3] * alpha)];
+    const path = new CanvasPath2D();
+    path.rect(x, y, width, height);
+    this.#drawShadowFill(path, this.fillRule);
+  }
+
+  #drawShadowFill(path: CanvasPath2D, fillRule: CanvasFillRule): void {
+    if (!this.#hasVisibleShadow()) {
+      return;
+    }
+
+    fillPolygons(
+      this.getPixels(),
+      this.canvas.width,
+      this.canvas.height,
+      offsetPolygons(pathToPolygons(path, this.#transform), this.#shadowOffsetX, this.#shadowOffsetY),
+      this.#shadowPaint(),
+      this.#globalCompositeOperation,
+      fillRule
+    );
+  }
+
+  #drawShadowStroke(path: CanvasPath2D): void {
+    if (!this.#hasVisibleShadow()) {
+      return;
+    }
+
+    strokePath(
+      this.getPixels(),
+      this.canvas.width,
+      this.canvas.height,
+      path,
+      multiplyMatrices(this.#transform, [1, 0, 0, 1, this.#shadowOffsetX, this.#shadowOffsetY]),
+      {
+        paint: this.#shadowPaint(),
+        operation: this.#globalCompositeOperation,
+        lineWidth: this.#lineWidth,
+        lineCap: this.#lineCap,
+        lineJoin: this.#lineJoin,
+        miterLimit: this.#miterLimit,
+        lineDash: this.#lineDash,
+        lineDashOffset: this.#lineDashOffset
+      }
+    );
   }
 }
 
 type Point = { readonly x: number; readonly y: number };
 
 type StrokeOptions = {
-  readonly color: Rgba;
+  readonly paint: Paint;
   readonly operation: GlobalCompositeOperation;
   readonly lineWidth: number;
   readonly lineCap: CanvasLineCap;
@@ -1468,9 +2409,29 @@ function pathToPolygons(path: CanvasPath2D, transform: Matrix2D): Point[][] {
       const from = lastPoint ?? transformPoint(transform, 0, 0);
       const cp = transformPoint(transform, command.cpx, command.cpy);
       const to = transformPoint(transform, command.x, command.y);
+      if (!start) {
+        current = [from];
+      }
       appendQuadraticBezier(current, from, cp, to);
       start ??= from;
       lastPoint = to;
+      continue;
+    }
+
+    if (command.type === "ellipse") {
+      const from = lastPoint ?? transformPoint(transform, 0, 0);
+      const points = ellipsePoints(command).map((point) => transformPoint(transform, point.x, point.y));
+      if (points.length === 0) {
+        continue;
+      }
+      if (!start) {
+        current = [points[0]];
+        start = points[0];
+      } else if (!samePoint(from, points[0])) {
+        current.push(points[0]);
+      }
+      current.push(...points.slice(1));
+      lastPoint = points[points.length - 1];
       continue;
     }
 
@@ -1568,6 +2529,23 @@ function pathToStrokeSubpaths(path: CanvasPath2D, transform: Matrix2D): StrokeSu
       continue;
     }
 
+    if (command.type === "ellipse") {
+      const from = lastPoint ?? transformPoint(transform, 0, 0);
+      const points = ellipsePoints(command).map((point) => transformPoint(transform, point.x, point.y));
+      if (points.length === 0) {
+        continue;
+      }
+      if (!start) {
+        start = points[0];
+        current = [points[0]];
+      } else if (!samePoint(from, points[0])) {
+        current.push(points[0]);
+      }
+      current.push(...points.slice(1));
+      lastPoint = points[points.length - 1];
+      continue;
+    }
+
     if (command.type === "rect") {
       finishOpen();
       const leftTop = transformPoint(transform, command.x, command.y);
@@ -1597,7 +2575,7 @@ function strokePath(
   transform: Matrix2D,
   options: StrokeOptions
 ): void {
-  if (options.color[3] === 0 || options.lineWidth <= 0) {
+  if (options.lineWidth <= 0) {
     return;
   }
 
@@ -1680,7 +2658,10 @@ function strokeSubpath(
       }
 
       if (hit) {
-        compositePixel(pixels, (y * width + x) * 4, options.color, options.operation);
+        const color = options.paint.sample(x + 0.5, y + 0.5);
+        if (color[3] !== 0) {
+          compositePixel(pixels, (y * width + x) * 4, color, options.operation);
+        }
       }
     }
   }
@@ -1797,6 +2778,16 @@ function positiveModulo(value: number, divisor: number): number {
   return ((value % divisor) + divisor) % divisor;
 }
 
+function measureFallbackTextWidth(text: string, fontSize: number, letterSpacing: string, wordSpacing: string): number {
+  const clusters = Array.from(text);
+  const baseWidth = clusters.length * fontSize * 0.6;
+  const letterSpacingPixels = cssLengthToPixels(letterSpacing, fontSize);
+  const wordSpacingPixels = cssLengthToPixels(wordSpacing, fontSize);
+  const letterSpacingWidth = Math.max(0, clusters.length - 1) * letterSpacingPixels;
+  const wordSpacingWidth = clusters.filter((cluster) => /\s/.test(cluster)).length * wordSpacingPixels;
+  return baseWidth + letterSpacingWidth + wordSpacingWidth;
+}
+
 function parseFontMetrics(font: string): { readonly size: number } {
   const match = /(?:^|\s)(\d*\.?\d+)(px|pt|em|rem|%)\b/.exec(font);
 
@@ -1881,6 +2872,43 @@ function appendQuadraticBezier(target: Point[], from: Point, cp: Point, to: Poin
       x: inverse * inverse * from.x + 2 * inverse * t * cp.x + t * t * to.x,
       y: inverse * inverse * from.y + 2 * inverse * t * cp.y + t * t * to.y
     });
+  }
+}
+
+function fillPolygons(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  polygons: readonly Point[][],
+  paint: Paint,
+  operation: GlobalCompositeOperation,
+  fillRule: CanvasFillRule
+): void {
+  if (polygons.length === 0) {
+    return;
+  }
+
+  const xs = polygons.flatMap((polygon) => polygon.map((point) => point.x));
+  const ys = polygons.flatMap((polygon) => polygon.map((point) => point.y));
+  const left = clamp(Math.floor(Math.min(...xs)), 0, width);
+  const right = clamp(Math.ceil(Math.max(...xs)), 0, width);
+  const top = clamp(Math.floor(Math.min(...ys)), 0, height);
+  const bottom = clamp(Math.ceil(Math.max(...ys)), 0, height);
+
+  for (let y = top; y < bottom; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      const pointX = x + 0.5;
+      const pointY = y + 0.5;
+      const winding = polygons.reduce((total, polygon) => total + windingNumber(pointX, pointY, polygon), 0);
+      const hit = fillRule === "evenodd" ? Math.abs(winding) % 2 === 1 : winding !== 0;
+
+      if (hit) {
+        const color = paint.sample(x + 0.5, y + 0.5);
+        if (color[3] !== 0) {
+          compositePixel(pixels, (y * width + x) * 4, color, operation);
+        }
+      }
+    }
   }
 }
 
@@ -2071,10 +3099,227 @@ function isPointInPolygon(x: number, y: number, polygon: readonly Point[]): bool
   return inside;
 }
 
+function windingNumber(x: number, y: number, polygon: readonly Point[]): number {
+  let winding = 0;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const current = polygon[i];
+    const previous = polygon[j];
+
+    if (previous.y <= y) {
+      if (current.y > y && crossProduct(previous, current, { x, y }) > 0) {
+        winding += 1;
+      }
+    } else if (current.y <= y && crossProduct(previous, current, { x, y }) < 0) {
+      winding -= 1;
+    }
+  }
+
+  return winding;
+}
+
+function ellipsePoints(command: Extract<PathCommand, { readonly type: "ellipse" }>): Point[] {
+  if (command.radiusX === 0 || command.radiusY === 0) {
+    return [ellipsePoint(command, command.startAngle)];
+  }
+
+  const sweep = normalizeArcSweep(command.startAngle, command.endAngle, command.counterclockwise);
+  if (sweep === 0) {
+    return [];
+  }
+
+  const steps = Math.max(6, Math.ceil((Math.abs(sweep) / (Math.PI * 2)) * 48));
+  const points: Point[] = [];
+
+  for (let step = 0; step <= steps; step += 1) {
+    points.push(ellipsePoint(command, command.startAngle + (sweep * step) / steps));
+  }
+
+  return points;
+}
+
+function ellipsePoint(command: Extract<PathCommand, { readonly type: "ellipse" }>, angle: number): Point {
+  const cosRotation = Math.cos(command.rotation);
+  const sinRotation = Math.sin(command.rotation);
+  const x = command.radiusX * Math.cos(angle);
+  const y = command.radiusY * Math.sin(angle);
+
+  return {
+    x: command.x + x * cosRotation - y * sinRotation,
+    y: command.y + x * sinRotation + y * cosRotation
+  };
+}
+
+function normalizeArcSweep(startAngle: number, endAngle: number, counterclockwise: boolean): number {
+  const fullCircle = Math.PI * 2;
+  let sweep = endAngle - startAngle;
+
+  if (!counterclockwise && sweep >= fullCircle) {
+    return fullCircle;
+  }
+
+  if (counterclockwise && sweep <= -fullCircle) {
+    return -fullCircle;
+  }
+
+  sweep = positiveModulo(sweep, fullCircle);
+
+  if (counterclockwise && sweep !== 0) {
+    sweep -= fullCircle;
+  }
+
+  return sweep;
+}
+
+function currentPathPoint(commands: readonly PathCommand[]): Point | undefined {
+  for (let index = commands.length - 1; index >= 0; index -= 1) {
+    const command = commands[index];
+
+    if (command.type === "moveTo" || command.type === "lineTo") {
+      return { x: command.x, y: command.y };
+    }
+
+    if (command.type === "quadraticCurveTo" || command.type === "bezierCurveTo") {
+      return { x: command.x, y: command.y };
+    }
+
+    if (command.type === "ellipse") {
+      const points = ellipsePoints(command);
+      return points[points.length - 1];
+    }
+
+    if (command.type === "rect") {
+      return { x: command.x, y: command.y };
+    }
+  }
+
+  return undefined;
+}
+
+function arcToSegments(
+  p0: Point,
+  p1: Point,
+  p2: Point,
+  radius: number
+):
+  | {
+      readonly start: Point;
+      readonly center: Point;
+      readonly startAngle: number;
+      readonly endAngle: number;
+      readonly counterclockwise: boolean;
+    }
+  | undefined {
+  const v0 = normalizeVector({ x: p0.x - p1.x, y: p0.y - p1.y });
+  const v1 = normalizeVector({ x: p2.x - p1.x, y: p2.y - p1.y });
+
+  if (!v0 || !v1 || radius === 0 || Math.abs(cross(v0, v1)) < 1e-12) {
+    return undefined;
+  }
+
+  const angle = Math.acos(clamp(dot(v0, v1), -1, 1));
+  const tangentLength = radius / Math.tan(angle / 2);
+  const start = { x: p1.x + v0.x * tangentLength, y: p1.y + v0.y * tangentLength };
+  const end = { x: p1.x + v1.x * tangentLength, y: p1.y + v1.y * tangentLength };
+  const bisector = normalizeVector({ x: v0.x + v1.x, y: v0.y + v1.y });
+
+  if (!bisector) {
+    return undefined;
+  }
+
+  const centerDistance = radius / Math.sin(angle / 2);
+  const center = { x: p1.x + bisector.x * centerDistance, y: p1.y + bisector.y * centerDistance };
+
+  return {
+    start,
+    center,
+    startAngle: Math.atan2(start.y - center.y, start.x - center.x),
+    endAngle: Math.atan2(end.y - center.y, end.x - center.x),
+    counterclockwise: cross(v0, v1) < 0
+  };
+}
+
+function normalizeRoundRectRadii(radii: number | DOMPointInit | Array<number | DOMPointInit>): [Point, Point, Point, Point] {
+  const values = Array.isArray(radii) ? radii : [radii];
+
+  if (values.length < 1 || values.length > 4) {
+    throw createRangeError("The radii list must contain one, two, three, or four radii.");
+  }
+
+  const points = values.map(roundRectRadiusPoint);
+  const [topLeft, topRight = topLeft, bottomRight = topLeft, bottomLeft = topRight] =
+    points.length === 3 ? [points[0], points[1], points[2], points[1]] : points;
+
+  return [topLeft, topRight, bottomRight, bottomLeft] as [Point, Point, Point, Point];
+}
+
+function roundRectRadiusPoint(value: number | DOMPointInit): Point {
+  const point = typeof value === "number" ? { x: value, y: value } : { x: value.x ?? 0, y: value.y ?? 0 };
+
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < 0 || point.y < 0) {
+    throw createRangeError("The radius provided is negative or non-finite.");
+  }
+
+  return point;
+}
+
+function appendRoundRectCorner(
+  path: CanvasPath2D,
+  x: number,
+  y: number,
+  radius: Point,
+  startAngle: number,
+  endAngle: number
+): void {
+  if (radius.x === 0 || radius.y === 0) {
+    path.lineTo(ellipsePoint({ type: "ellipse", x, y, radiusX: radius.x, radiusY: radius.y, rotation: 0, startAngle, endAngle, counterclockwise: false }, endAngle).x, ellipsePoint({ type: "ellipse", x, y, radiusX: radius.x, radiusY: radius.y, rotation: 0, startAngle, endAngle, counterclockwise: false }, endAngle).y);
+    return;
+  }
+
+  path.ellipse(x, y, radius.x, radius.y, 0, startAngle, endAngle, false);
+}
+
+function normalizeVector(vector: Point): Point | undefined {
+  const length = Math.hypot(vector.x, vector.y);
+  return length === 0 ? undefined : { x: vector.x / length, y: vector.y / length };
+}
+
+function cross(a: Point, b: Point): number {
+  return a.x * b.y - a.y * b.x;
+}
+
+function crossProduct(a: Point, b: Point, c: Point): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+function dot(a: Point, b: Point): number {
+  return a.x * b.x + a.y * b.y;
+}
+
+function samePoint(a: Point, b: Point): boolean {
+  return Math.abs(a.x - b.x) < 1e-9 && Math.abs(a.y - b.y) < 1e-9;
+}
+
 function assertNonNegativeInteger(value: number, label: string): void {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`${label} must be a non-negative integer`);
   }
+}
+
+function assertPositiveInteger(value: number, label: string): void {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw createIndexSizeError(`${label} must be a positive integer`);
+  }
+}
+
+function toImageDataDimension(value: unknown, label: string): number {
+  const number = Number(value);
+
+  if (!Number.isFinite(number) || !Number.isInteger(number) || number <= 0) {
+    throw createIndexSizeError(`${label} must be a positive integer`);
+  }
+
+  return number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -2147,6 +3392,291 @@ function isCanvasTextRendering(value: unknown): value is CanvasTextRendering {
   return typeof value === "string" && CANVAS_TEXT_RENDERINGS.has(value);
 }
 
+function isCanvasImageSmoothingQuality(value: unknown): value is CanvasImageSmoothingQuality {
+  return typeof value === "string" && CANVAS_IMAGE_SMOOTHING_QUALITIES.has(value);
+}
+
+function parseCanvasPaintStyle(
+  value: string | CanvasGradient | CanvasPattern
+): { readonly style: string | CanvasGradient | CanvasPattern; readonly paint: CanvasPaintStyle } | undefined {
+  if (value instanceof CanvasGradient) {
+    return { style: value, paint: { type: "gradient", gradient: value } };
+  }
+
+  if (value instanceof CanvasPattern) {
+    return { style: value, paint: { type: "pattern", pattern: value } };
+  }
+
+  const color = parseColor(String(value));
+  if (!color) {
+    return undefined;
+  }
+
+  return { style: color.serialized, paint: { type: "color", rgba: color.rgba } };
+}
+
+function sampleCanvasPaintStyle(style: CanvasPaintStyle, x: number, y: number): Rgba {
+  if (style.type === "gradient") {
+    return style.gradient.sample(x, y);
+  }
+
+  if (style.type === "pattern") {
+    return style.pattern.sample(x, y);
+  }
+
+  return style.rgba;
+}
+
+function sampleGradientStops(stops: readonly CanvasGradientStop[], offset: number): Rgba {
+  if (offset <= stops[0].offset) {
+    return stops[0].rgba;
+  }
+
+  const last = stops[stops.length - 1];
+  if (offset >= last.offset) {
+    return last.rgba;
+  }
+
+  for (let index = 1; index < stops.length; index += 1) {
+    const left = stops[index - 1];
+    const right = stops[index];
+
+    if (offset > right.offset) {
+      continue;
+    }
+
+    if (left.offset === right.offset) {
+      return right.rgba;
+    }
+
+    const ratio = (offset - left.offset) / (right.offset - left.offset);
+    return [
+      Math.round(left.rgba[0] + (right.rgba[0] - left.rgba[0]) * ratio),
+      Math.round(left.rgba[1] + (right.rgba[1] - left.rgba[1]) * ratio),
+      Math.round(left.rgba[2] + (right.rgba[2] - left.rgba[2]) * ratio),
+      Math.round(left.rgba[3] + (right.rgba[3] - left.rgba[3]) * ratio)
+    ];
+  }
+
+  return last.rgba;
+}
+
+function patternCoordinate(value: number, size: number, repeats: boolean): number | undefined {
+  if (size <= 0) {
+    return undefined;
+  }
+
+  if (repeats) {
+    return positiveModulo(value, size);
+  }
+
+  return value >= 0 && value < size ? value : undefined;
+}
+
+function normalizePatternRepetition(repetition: string | null): CanvasPatternRepetition | undefined {
+  const normalized = repetition === null || repetition === "" ? "repeat" : String(repetition);
+
+  if (normalized === "repeat" || normalized === "repeat-x" || normalized === "repeat-y" || normalized === "no-repeat") {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeDrawImageArguments(sourceCanvas: Canvas, args: readonly number[]): DrawImageGeometry | undefined {
+  const numbers = Array.from(args, Number);
+
+  if (numbers.length === 2) {
+    const [dx, dy] = numbers;
+    return {
+      sourceCanvas,
+      sourceX: 0,
+      sourceY: 0,
+      sourceWidth: sourceCanvas.width,
+      sourceHeight: sourceCanvas.height,
+      destX: dx,
+      destY: dy,
+      destWidth: sourceCanvas.width,
+      destHeight: sourceCanvas.height
+    };
+  }
+
+  if (numbers.length === 4) {
+    const [dx, dy, destWidth, destHeight] = numbers;
+    return {
+      sourceCanvas,
+      sourceX: 0,
+      sourceY: 0,
+      sourceWidth: sourceCanvas.width,
+      sourceHeight: sourceCanvas.height,
+      destX: dx,
+      destY: dy,
+      destWidth,
+      destHeight
+    };
+  }
+
+  if (numbers.length === 8) {
+    const [sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight] = numbers;
+    return {
+      sourceCanvas,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      destX,
+      destY,
+      destWidth,
+      destHeight
+    };
+  }
+
+  return undefined;
+}
+
+function normalizeRect(x: number, y: number, width: number, height: number): NormalizedRect {
+  return {
+    left: width < 0 ? x + width : x,
+    top: height < 0 ? y + height : y,
+    width: Math.abs(width),
+    height: Math.abs(height)
+  };
+}
+
+function clipSourceRect(rect: NormalizedRect, sourceWidth: number, sourceHeight: number): NormalizedRect | undefined {
+  const left = clamp(rect.left, 0, sourceWidth);
+  const top = clamp(rect.top, 0, sourceHeight);
+  const right = clamp(rect.left + rect.width, 0, sourceWidth);
+  const bottom = clamp(rect.top + rect.height, 0, sourceHeight);
+
+  if (right <= left || bottom <= top) {
+    return undefined;
+  }
+
+  return {
+    left,
+    top,
+    width: right - left,
+    height: bottom - top
+  };
+}
+
+function transformedRectBounds(
+  rect: NormalizedRect,
+  transform: Matrix2D,
+  canvasWidth: number,
+  canvasHeight: number
+): { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number } {
+  const points = [
+    transformPoint(transform, rect.left, rect.top),
+    transformPoint(transform, rect.left + rect.width, rect.top),
+    transformPoint(transform, rect.left + rect.width, rect.top + rect.height),
+    transformPoint(transform, rect.left, rect.top + rect.height)
+  ];
+  return {
+    left: clamp(Math.floor(Math.min(...points.map((point) => point.x))), 0, canvasWidth),
+    top: clamp(Math.floor(Math.min(...points.map((point) => point.y))), 0, canvasHeight),
+    right: clamp(Math.ceil(Math.max(...points.map((point) => point.x))), 0, canvasWidth),
+    bottom: clamp(Math.ceil(Math.max(...points.map((point) => point.y))), 0, canvasHeight)
+  };
+}
+
+function sampleNearest(pixels: Uint8ClampedArray, width: number, height: number, x: number, y: number): Rgba {
+  const sourceX = clamp(Math.floor(x), 0, width - 1);
+  const sourceY = clamp(Math.floor(y), 0, height - 1);
+  return pixelAtOffset(pixels, (sourceY * width + sourceX) * 4);
+}
+
+function sampleBilinear(pixels: Uint8ClampedArray, width: number, height: number, x: number, y: number): Rgba {
+  const sourceX = clamp(x - 0.5, 0, width - 1);
+  const sourceY = clamp(y - 0.5, 0, height - 1);
+  const left = Math.floor(sourceX);
+  const top = Math.floor(sourceY);
+  const right = clamp(left + 1, 0, width - 1);
+  const bottom = clamp(top + 1, 0, height - 1);
+  const tx = sourceX - left;
+  const ty = sourceY - top;
+  const topLeft = pixelAtOffset(pixels, (top * width + left) * 4);
+  const topRight = pixelAtOffset(pixels, (top * width + right) * 4);
+  const bottomLeft = pixelAtOffset(pixels, (bottom * width + left) * 4);
+  const bottomRight = pixelAtOffset(pixels, (bottom * width + right) * 4);
+
+  return [
+    Math.round(lerp(lerp(topLeft[0], topRight[0], tx), lerp(bottomLeft[0], bottomRight[0], tx), ty)),
+    Math.round(lerp(lerp(topLeft[1], topRight[1], tx), lerp(bottomLeft[1], bottomRight[1], tx), ty)),
+    Math.round(lerp(lerp(topLeft[2], topRight[2], tx), lerp(bottomLeft[2], bottomRight[2], tx), ty)),
+    Math.round(lerp(lerp(topLeft[3], topRight[3], tx), lerp(bottomLeft[3], bottomRight[3], tx), ty))
+  ];
+}
+
+function pixelAtOffset(pixels: Uint8ClampedArray, offset: number): Rgba {
+  return [pixels[offset], pixels[offset + 1], pixels[offset + 2], pixels[offset + 3]];
+}
+
+function lerp(left: number, right: number, ratio: number): number {
+  return left + (right - left) * ratio;
+}
+
+function isCanvasImageSource(value: unknown): value is Canvas {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Canvas).width === "number" &&
+    typeof (value as Canvas).height === "number" &&
+    typeof (value as Canvas).getContext === "function"
+  );
+}
+
+function parseCanvasFilter(value: string): { readonly serialized: string; readonly opacity: number } | undefined {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "none") {
+    return { serialized: "none", opacity: 1 };
+  }
+
+  const opacity = /^opacity\(\s*(\d*\.?\d+%?)\s*\)$/.exec(normalized);
+  if (opacity) {
+    const amount = opacity[1].endsWith("%") ? Number(opacity[1].slice(0, -1)) / 100 : Number(opacity[1]);
+    if (!Number.isFinite(amount)) {
+      return undefined;
+    }
+    return { serialized: `opacity(${serializeCssNumber(clamp(amount, 0, 1))})`, opacity: clamp(amount, 0, 1) };
+  }
+
+  const blur = /^blur\(\s*([^)]+)\s*\)$/.exec(normalized);
+  if (blur && parseCssLength(blur[1]) !== undefined) {
+    return { serialized: value, opacity: 1 };
+  }
+
+  return undefined;
+}
+
+function applyAlpha(color: Rgba, alpha: number): Rgba {
+  if (alpha === 1) {
+    return color;
+  }
+
+  return [color[0], color[1], color[2], Math.round(color[3] * clamp(alpha, 0, 1))];
+}
+
+function offsetPolygons(polygons: readonly Point[][], offsetX: number, offsetY: number): Point[][] {
+  return polygons.map((polygon) => polygon.map((point) => ({ x: point.x + offsetX, y: point.y + offsetY })));
+}
+
+function assertFiniteNumbers(values: readonly number[], label: string): void {
+  if (values.some((value) => !Number.isFinite(Number(value)))) {
+    throw new TypeError(`${label} arguments must be finite.`);
+  }
+}
+
+function normalizeImageDataColorSpace(settings?: ImageDataSettings): CanvasImageDataColorSpace {
+  if (settings?.colorSpace === undefined || settings.colorSpace === "srgb") {
+    return "srgb";
+  }
+
+  throw createNotSupportedError("Only the srgb ImageData color space is supported.");
+}
+
 function parseCssLength(value: string): string | undefined {
   const normalized = value.trim().toLowerCase();
 
@@ -2175,6 +3705,39 @@ function parseCssLength(value: string): string | undefined {
   }
 
   return `${serializeCssNumber(number)}${unit}`;
+}
+
+function cssLengthToPixels(value: string, fontSize: number): number {
+  const match = /^([+-]?(?:\d+|\d*\.\d+))([a-z%]+)$/.exec(value.trim().toLowerCase());
+
+  if (!match) {
+    return 0;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+
+  if (unit === "px") {
+    return amount;
+  }
+
+  if (unit === "pt") {
+    return (amount * 4) / 3;
+  }
+
+  if (unit === "em" || unit === "rem") {
+    return amount * fontSize;
+  }
+
+  if (unit === "%") {
+    return (amount / 100) * fontSize;
+  }
+
+  return 0;
 }
 
 function parseCanvasFont(value: string): string | undefined {
@@ -2537,6 +4100,40 @@ function createIndexSizeError(message: string): Error {
   const error = new Error(message);
   error.name = "IndexSizeError";
   return error;
+}
+
+function createSyntaxError(message: string): Error {
+  if (typeof DOMException === "function") {
+    return new DOMException(message, "SyntaxError");
+  }
+
+  const error = new Error(message);
+  error.name = "SyntaxError";
+  return error;
+}
+
+function createNotSupportedError(message: string): Error {
+  if (typeof DOMException === "function") {
+    return new DOMException(message, "NotSupportedError");
+  }
+
+  const error = new Error(message);
+  error.name = "NotSupportedError";
+  return error;
+}
+
+function createTypeMismatchError(message: string): Error {
+  if (typeof DOMException === "function") {
+    return new DOMException(message, "TypeMismatchError");
+  }
+
+  const error = new Error(message);
+  error.name = "TypeMismatchError";
+  return error;
+}
+
+function createRangeError(message: string): RangeError {
+  return new RangeError(message);
 }
 
 function toWebIDLLong(value: unknown, label: string): number {

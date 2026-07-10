@@ -1,8 +1,11 @@
 import { PNG } from "pngjs";
 import {
   Canvas2DRenderingContext,
+  CanvasGradient,
   CanvasImageData,
+  CanvasPattern,
   CanvasPath2D,
+  CanvasTextMetrics,
   CanvasTransformMatrix,
   type Canvas2DContext
 } from "./context";
@@ -132,8 +135,11 @@ export class PngJsEncoder implements PngEncoder {
 
 export {
   Canvas2DRenderingContext,
+  CanvasGradient,
   CanvasImageData,
+  CanvasPattern,
   CanvasPath2D,
+  CanvasTextMetrics,
   CanvasTransformMatrix,
   JavascriptCanvas2DContext
 };

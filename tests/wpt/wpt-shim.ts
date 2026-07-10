@@ -1,4 +1,12 @@
-import { Canvas, RaylibCanvas2DContext, type CanvasImageData, type RaylibCanvasWasmModule } from "../../src/index";
+import {
+  Canvas,
+  CanvasGradient,
+  CanvasImageData,
+  CanvasPath2D,
+  CanvasPattern,
+  RaylibCanvas2DContext,
+  type RaylibCanvasWasmModule
+} from "../../src/index";
 
 type Raylib2DContext = NonNullable<ReturnType<Canvas["getContext"]>>;
 
@@ -74,6 +82,24 @@ Object.defineProperty(globalThis, "__raylibCanvasWptShim", {
   value: { version: 1 }
 });
 
+Object.defineProperty(globalThis, "Path2D", {
+  configurable: true,
+  writable: true,
+  value: CanvasPath2D
+});
+
+Object.defineProperty(globalThis, "CanvasGradient", {
+  configurable: true,
+  writable: true,
+  value: CanvasGradient
+});
+
+Object.defineProperty(globalThis, "CanvasPattern", {
+  configurable: true,
+  writable: true,
+  value: CanvasPattern
+});
+
 function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const existing = wrappers.get(domCanvas);
 
@@ -91,8 +117,50 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
 
         if (property === "getImageData") {
           return (...args: unknown[]) => {
-            const [sx, sy, sw, sh] = args as [number, number, number, number];
-            return toBrowserImageData(getCurrentContext(domCanvas).getImageData(sx, sy, sw, sh));
+            const [sx, sy, sw, sh, settings] = args as [number, number, number, number, ImageDataSettings | undefined];
+            return toBrowserImageData(getCurrentContext(domCanvas).getImageData(sx, sy, sw, sh, settings));
+          };
+        }
+
+        if (property === "createImageData") {
+          return (...args: unknown[]) => {
+            const context = getCurrentContext(domCanvas);
+            const imageData =
+              args[0] instanceof ImageData
+                ? context.createImageData(toCanvasImageData(args[0]))
+                : context.createImageData(args[0] as number, args[1] as number, args[2] as ImageDataSettings | undefined);
+            return toBrowserImageData(imageData);
+          };
+        }
+
+        if (property === "putImageData") {
+          return (...args: unknown[]) => {
+            const [imageData, dx, dy, dirtyX, dirtyY, dirtyWidth, dirtyHeight] = args as [
+              ImageData | CanvasImageData,
+              number,
+              number,
+              number | undefined,
+              number | undefined,
+              number | undefined,
+              number | undefined
+            ];
+            return getCurrentContext(domCanvas).putImageData(
+              toCanvasImageData(imageData),
+              dx,
+              dy,
+              dirtyX,
+              dirtyY,
+              dirtyWidth,
+              dirtyHeight
+            );
+          };
+        }
+
+        if (property === "drawImage") {
+          return (...args: unknown[]) => {
+            const [image, ...drawArgs] = args;
+            const drawImage = getCurrentContext(domCanvas).drawImage as (source: Canvas, ...numbers: number[]) => void;
+            return drawImage(toCanvasImageSource(image), ...(drawArgs as number[]));
           };
         }
 
@@ -187,6 +255,28 @@ function toBrowserImageData(imageData: CanvasImageData): ImageData | CanvasImage
   } catch {
     return new ImageData(data, imageData.width, imageData.height);
   }
+}
+
+function toCanvasImageData(imageData: ImageData | CanvasImageData): CanvasImageData {
+  if (imageData instanceof CanvasImageData) {
+    return imageData;
+  }
+
+  return new CanvasImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height, {
+    colorSpace: "srgb"
+  });
+}
+
+function toCanvasImageSource(image: unknown): Canvas {
+  if (image instanceof HTMLCanvasElement) {
+    return getOrCreateBacking(image).canvas;
+  }
+
+  if (image instanceof Canvas) {
+    return image;
+  }
+
+  throw new TypeError("Unsupported CanvasImageSource for raylib-canvas WPT shim.");
 }
 
 function patchCanvasDimension(property: "width" | "height"): void {

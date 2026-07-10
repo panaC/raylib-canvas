@@ -24,12 +24,12 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/drawing-paths-to-the-canvas/",
-      "reason": "Path construction, fill, stroke, clipping, and hit testing are not implemented yet."
+      "reason": "Path construction and simple fill/stroke behavior have smoke coverage; broader pixel-accurate path rendering, clipping, and hit testing remain incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/path-objects/",
-      "reason": "Path2D is not implemented yet."
+      "reason": "Path2D is available for supported path commands; clipping, hit testing, and many exact path rendering cases remain incomplete."
     },
     {
       "status": "blocked",
@@ -44,7 +44,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/text/",
-      "reason": "Text style state and basic font/spacing parsing have smoke coverage; remaining text WPTs require fillText(), strokeText(), measureText(), font loading, or text metrics."
+      "reason": "Text style state, basic font/spacing parsing, and empty-string measureText() have smoke coverage; remaining text WPTs require fillText(), broader strokeText(), font loading, shaping, or browser-exact text metrics."
     },
     {
       "status": "blocked",
@@ -54,47 +54,47 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/drawing-images-to-the-canvas/",
-      "reason": "drawImage() and CanvasImageSource handling are not implemented yet."
+      "reason": "drawImage() supports canvas sources with unit coverage; broader WPTs require ImageBitmap, HTMLImageElement, decoded resources, and additional CanvasImageSource host behavior."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/compositing/",
-      "reason": "Core globalAlpha/globalCompositeOperation fillRect coverage exists; remaining tests need drawImage(), patterns, shadows, filters, clipping, and pixel-accurate advanced blend modes."
+      "reason": "Core globalAlpha/globalCompositeOperation fillRect coverage exists; remaining tests need drawImage(), clipping, broader pattern/shadow/filter interactions, and pixel-accurate advanced blend modes."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/shadows/",
-      "reason": "Shadow state and rendering are not implemented yet."
+      "reason": "Shadow state and simple rendering have smoke coverage; blurred shadows, image/pattern shadows, clipping, transforms, and exact pixel fidelity remain incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/filters/",
-      "reason": "Canvas filters are not implemented yet."
+      "reason": "Filter state has smoke coverage and opacity() has unit rendering coverage; full filter parsing, blur rendering, drop-shadow, CanvasFilter objects, and filter layers remain incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/fill-and-stroke-styles/",
-      "reason": "Only a small fillStyle color subset exists; gradients, patterns, strokeStyle, and broad CSS color parsing are not implemented yet."
+      "reason": "A small color subset, gradient objects, and canvas-backed patterns have smoke/unit coverage; broad CSS color parsing, exact gradient fidelity, image-backed patterns, and pattern transforms remain incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/pixel-manipulation/",
-      "reason": "Only getImageData() basics exist; createImageData(), putImageData(), color spaces, and settings are not implemented yet."
+      "reason": "getImageData(), createImageData(), and putImageData() have basic smoke/unit coverage for sRGB unorm8 data; wide-gamut color spaces, float16 pixel data, ImageData constructor parity, and broader edge cases remain incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/drawing-rectangles-to-the-canvas/",
-      "reason": "Only fillRect()/clearRect() basics exist; strokeRect(), state interaction, transforms, shadows, and edge cases are not implemented yet."
+      "reason": "fillRect()/clearRect()/strokeRect() basics, transforms, and simple shadow interaction have coverage; clipping, filters, broader shadows, and remaining edge cases are incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/canvas-state/",
-      "reason": "save(), restore(), reset(), and drawing state stacks are not implemented yet."
+      "reason": "save()/restore() cover implemented drawing state including styles, shadows, filters, line, text, and transforms; reset() and remaining state areas are incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/image-smoothing/",
-      "reason": "Image smoothing state is not implemented yet."
+      "reason": "imageSmoothingEnabled and imageSmoothingQuality state are implemented with nearest/bilinear drawImage sampling; manual visual image-smoothing WPT coverage and quality-specific filtering remain incomplete."
     },
     {
       "status": "blocked",

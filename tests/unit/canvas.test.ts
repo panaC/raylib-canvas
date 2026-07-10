@@ -40,6 +40,18 @@ function pixelAt(ctx: TestContext, x: number, y: number): number[] {
   return Array.from(ctx.getImageData(x, y, 1, 1).data);
 }
 
+function hasOpaquePixelIn(ctx: TestContext, left: number, top: number, width: number, height: number): boolean {
+  const data = ctx.getImageData(left, top, width, height).data;
+
+  for (let offset = 3; offset < data.length; offset += 4) {
+    if (data[offset] === 255) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 describe("createCanvas", () => {
   it("renders a rectangle and generates a PNG blob", async () => {
     const canvas = await createTestCanvas(16, 12);
@@ -104,6 +116,80 @@ describe("createCanvas", () => {
 
     ctx.strokeRect(1, 1, 2, 2);
     expect(pixelAt(ctx, 1, 1)).toEqual([0, 255, 0, 255]);
+  });
+
+  it("creates gradients, validates color stops, and uses gradient objects as paint styles", async () => {
+    const canvas = await createTestCanvas(4, 1);
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createLinearGradient(0, 0, 4, 0);
+
+    expect(gradient).toBe(ctx.fillStyle = gradient);
+    expect(() => ctx.createLinearGradient(0, 0, Number.NaN, 0)).toThrow(/finite/i);
+    expect(() => gradient.addColorStop(-0.1, "red")).toThrow(/offset/i);
+    expect(() => gradient.addColorStop(0.5, "not-a-color")).toThrow(/color/i);
+
+    gradient.addColorStop(0, "red");
+    gradient.addColorStop(1, "blue");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 4, 1);
+
+    expect(pixelAt(ctx, 0, 0)[0]).toBeGreaterThan(pixelAt(ctx, 0, 0)[2]);
+    expect(pixelAt(ctx, 3, 0)[2]).toBeGreaterThan(pixelAt(ctx, 3, 0)[0]);
+  });
+
+  it("renders radial and conic gradient fills", async () => {
+    const canvas = await createTestCanvas(5, 5);
+    const ctx = canvas.getContext("2d");
+    const radial = ctx.createRadialGradient(2, 2, 0, 2, 2, 3);
+
+    expect(() => ctx.createRadialGradient(0, 0, -1, 0, 0, 1)).toThrow(/radius/i);
+    expect(() => ctx.createConicGradient(Number.POSITIVE_INFINITY, 0, 0)).toThrow(/finite/i);
+
+    radial.addColorStop(0, "red");
+    radial.addColorStop(1, "blue");
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, 5, 5);
+
+    expect(pixelAt(ctx, 2, 2)[0]).toBeGreaterThan(pixelAt(ctx, 2, 2)[2]);
+    expect(pixelAt(ctx, 0, 0)[2]).toBeGreaterThan(pixelAt(ctx, 0, 0)[0]);
+
+    const conic = ctx.createConicGradient(0, 2, 2);
+    conic.addColorStop(0, "red");
+    conic.addColorStop(0.5, "blue");
+    conic.addColorStop(1, "red");
+    ctx.fillStyle = conic;
+    ctx.fillRect(0, 0, 5, 5);
+
+    expect(pixelAt(ctx, 4, 2)[0]).toBeGreaterThan(pixelAt(ctx, 4, 2)[2]);
+    expect(pixelAt(ctx, 0, 2)[2]).toBeGreaterThan(pixelAt(ctx, 0, 2)[0]);
+  });
+
+  it("creates canvas-backed patterns with repetition modes", async () => {
+    const source = await createTestCanvas(2, 1);
+    const sourceContext = source.getContext("2d");
+    sourceContext.fillStyle = "red";
+    sourceContext.fillRect(0, 0, 1, 1);
+    sourceContext.fillStyle = "green";
+    sourceContext.fillRect(1, 0, 1, 1);
+
+    const canvas = await createTestCanvas(4, 2);
+    const ctx = canvas.getContext("2d");
+    const repeat = ctx.createPattern(source, "");
+
+    expect(repeat).not.toBeNull();
+    expect(() => ctx.createPattern(source, "REPEAT")).toThrow(/repetition/i);
+
+    ctx.fillStyle = repeat!;
+    ctx.fillRect(0, 0, 4, 1);
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 0)).toEqual([0, 128, 0, 255]);
+    expect(pixelAt(ctx, 2, 0)).toEqual([255, 0, 0, 255]);
+
+    ctx.clearRect(0, 0, 4, 2);
+    ctx.fillStyle = ctx.createPattern(source, "no-repeat")!;
+    ctx.fillRect(0, 0, 4, 2);
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 2, 0)).toEqual([0, 0, 0, 0]);
   });
 
   it("validates globalAlpha assignments", async () => {
@@ -310,6 +396,87 @@ describe("createCanvas", () => {
     expect(ctx.fontStretch).toBe("expanded");
     expect(ctx.fontVariantCaps).toBe("small-caps");
     expect(ctx.textRendering).toBe("optimizeLegibility");
+  });
+
+  it("validates shadow and filter assignments", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.shadowOffsetX).toBe(0);
+    expect(ctx.shadowOffsetY).toBe(0);
+    expect(ctx.shadowBlur).toBe(0);
+    expect(ctx.shadowColor).toBe("rgba(0, 0, 0, 0)");
+    expect(ctx.filter).toBe("none");
+
+    ctx.shadowOffsetX = 1.5;
+    ctx.shadowOffsetY = -2;
+    ctx.shadowBlur = 3;
+    ctx.shadowColor = "red";
+    ctx.filter = "opacity(50%)";
+
+    expect(ctx.shadowOffsetX).toBe(1.5);
+    expect(ctx.shadowOffsetY).toBe(-2);
+    expect(ctx.shadowBlur).toBe(3);
+    expect(ctx.shadowColor).toBe("#ff0000");
+    expect(ctx.filter).toBe("opacity(0.5)");
+
+    ctx.shadowOffsetX = Number.NaN;
+    ctx.shadowOffsetY = Number.POSITIVE_INFINITY;
+    ctx.shadowBlur = -1;
+    ctx.shadowColor = "not-a-color";
+    ctx.filter = "not-a-filter()";
+
+    expect(ctx.shadowOffsetX).toBe(1.5);
+    expect(ctx.shadowOffsetY).toBe(-2);
+    expect(ctx.shadowBlur).toBe(3);
+    expect(ctx.shadowColor).toBe("#ff0000");
+    expect(ctx.filter).toBe("opacity(0.5)");
+  });
+
+  it("saves and restores shadow and filter state", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 2;
+    ctx.shadowBlur = 3;
+    ctx.shadowColor = "red";
+    ctx.filter = "opacity(0.25)";
+    ctx.save();
+
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 6;
+    ctx.shadowBlur = 7;
+    ctx.shadowColor = "blue";
+    ctx.filter = "none";
+    ctx.restore();
+
+    expect(ctx.shadowOffsetX).toBe(1);
+    expect(ctx.shadowOffsetY).toBe(2);
+    expect(ctx.shadowBlur).toBe(3);
+    expect(ctx.shadowColor).toBe("#ff0000");
+    expect(ctx.filter).toBe("opacity(0.25)");
+  });
+
+  it("renders shadows and opacity filters for filled rectangles", async () => {
+    const canvas = await createTestCanvas(3, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.shadowColor = "green";
+    ctx.shadowOffsetX = 1;
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 1, 1);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 0)).toEqual([0, 128, 0, 255]);
+
+    ctx.clearRect(0, 0, 3, 2);
+    ctx.shadowColor = "transparent";
+    ctx.filter = "opacity(50%)";
+    ctx.fillStyle = "blue";
+    ctx.fillRect(0, 0, 1, 1);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 255, 128]);
   });
 
   it("parses and serializes supported font assignments", async () => {
@@ -615,6 +782,104 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 0, 1)).toEqual([255, 0, 0, 255]);
     expect(pixelAt(ctx, 2, 1)).toEqual([0, 0, 0, 0]);
     expect(pixelAt(ctx, 4, 1)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("fills paths with lines, closePath, and beginPath reset", async () => {
+    const canvas = await createTestCanvas(8, 8);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.rect(0, 0, 2, 2);
+    ctx.beginPath();
+    ctx.moveTo(2, 1);
+    ctx.lineTo(6, 1);
+    ctx.lineTo(6, 5);
+    ctx.closePath();
+    ctx.fill();
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 5, 2)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("fills quadratic and cubic curves", async () => {
+    const canvas = await createTestCanvas(12, 12);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.moveTo(1, 10);
+    ctx.quadraticCurveTo(6, 0, 11, 10);
+    ctx.closePath();
+    ctx.fill();
+
+    expect(hasOpaquePixelIn(ctx, 4, 4, 4, 4)).toBe(true);
+
+    ctx.clearRect(0, 0, 12, 12);
+    ctx.beginPath();
+    ctx.moveTo(1, 10);
+    ctx.bezierCurveTo(1, 1, 11, 1, 11, 10);
+    ctx.closePath();
+    ctx.fill();
+
+    expect(hasOpaquePixelIn(ctx, 4, 3, 4, 5)).toBe(true);
+  });
+
+  it("fills arcs, ellipses, arcTo, and rounded rectangles", async () => {
+    const canvas = await createTestCanvas(24, 18);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(5, 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+    expect(pixelAt(ctx, 5, 5)).toEqual([255, 0, 0, 255]);
+
+    ctx.fillStyle = "green";
+    ctx.beginPath();
+    ctx.ellipse(14, 5, 4, 2, Math.PI / 8, 0, Math.PI * 2);
+    ctx.fill();
+    expect(pixelAt(ctx, 14, 5)).toEqual([0, 128, 0, 255]);
+
+    ctx.clearRect(0, 0, 24, 18);
+    ctx.strokeStyle = "blue";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(2, 15);
+    ctx.arcTo(8, 9, 14, 15, 4);
+    ctx.stroke();
+    expect(hasOpaquePixelIn(ctx, 2, 10, 11, 7)).toBe(true);
+
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.roundRect(16, 10, 7, 7, [3, 1, 3, 1]);
+    ctx.fill();
+    expect(pixelAt(ctx, 19, 13)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 16, 10)).not.toEqual([255, 0, 0, 255]);
+  });
+
+  it("applies evenodd fill rules across subpaths", async () => {
+    const canvas = await createTestCanvas(8, 8);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.rect(1, 1, 6, 6);
+    ctx.rect(2, 2, 4, 4);
+    ctx.fill("evenodd");
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("validates path radii", async () => {
+    const canvas = await createTestCanvas(8, 8);
+    const ctx = canvas.getContext("2d");
+
+    expect(() => ctx.arc(1, 1, -1, 0, 1)).toThrow(/radius/i);
+    expect(() => ctx.ellipse(1, 1, 1, -1, 0, 0, 1)).toThrow(/radius/i);
+    expect(() => ctx.arcTo(1, 1, 2, 2, -1)).toThrow(/radius/i);
+    expect(() => ctx.roundRect(1, 1, 2, 2, [-1])).toThrow(/radius/i);
   });
 
   it("strokes text with a deterministic fallback glyph outline", async () => {
@@ -1214,6 +1479,142 @@ describe("createCanvas", () => {
 
     expect(() => ctx.getImageData(0, 0, 0, 1)).toThrow(/source width or height/i);
     expect(() => ctx.getImageData(0, 0, 1, 0)).toThrow(/source width or height/i);
+  });
+
+  it("creates transparent image data with dimensions and existing image data", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    const imageData = ctx.createImageData(-2, 3, { colorSpace: "srgb" });
+    expect(imageData.width).toBe(2);
+    expect(imageData.height).toBe(3);
+    expect(imageData.colorSpace).toBe("srgb");
+    expect(Array.from(imageData.data)).toEqual(new Array(24).fill(0));
+
+    imageData.data[0] = 255;
+    const clone = ctx.createImageData(imageData);
+    expect(clone.width).toBe(2);
+    expect(clone.height).toBe(3);
+    expect(clone.data[0]).toBe(0);
+
+    expect(() => ctx.createImageData(0, 1)).toThrow(/width or height|positive/i);
+  });
+
+  it("writes image data without applying transform alpha or compositing state", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.createImageData(2, 2);
+
+    imageData.data.set([
+      255, 0, 0, 255,
+      0, 255, 0, 255,
+      0, 0, 255, 255,
+      255, 255, 255, 255
+    ]);
+    ctx.globalAlpha = 0.25;
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.translate(1, 1);
+    ctx.putImageData(imageData, 1, 1);
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 2, 2)).toEqual([255, 255, 255, 255]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("clips putImageData dirty rectangles and supports negative dirty sizes", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.createImageData(3, 3);
+
+    for (let offset = 0; offset < imageData.data.length; offset += 4) {
+      imageData.data[offset] = 255;
+      imageData.data[offset + 3] = 255;
+    }
+
+    ctx.putImageData(imageData, 1, 1, 3, 3, -2, -2);
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 2, 2)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("tracks image smoothing state and restores it", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.imageSmoothingEnabled).toBe(true);
+    expect(ctx.imageSmoothingQuality).toBe("low");
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingQuality = "high";
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "medium";
+    ctx.imageSmoothingQuality = "invalid" as typeof ctx.imageSmoothingQuality;
+    ctx.restore();
+
+    expect(ctx.imageSmoothingEnabled).toBe(false);
+    expect(ctx.imageSmoothingQuality).toBe("high");
+  });
+
+  it("draws canvas images with three, five, and nine argument forms", async () => {
+    const source = await createTestCanvas(3, 2);
+    const sourceContext = source.getContext("2d");
+    sourceContext.fillStyle = "red";
+    sourceContext.fillRect(0, 0, 1, 2);
+    sourceContext.fillStyle = "green";
+    sourceContext.fillRect(1, 0, 1, 2);
+    sourceContext.fillStyle = "blue";
+    sourceContext.fillRect(2, 0, 1, 2);
+
+    const canvas = await createTestCanvas(8, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(source, 0, 0);
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 2, 0)).toEqual([0, 0, 255, 255]);
+
+    ctx.drawImage(source, 3, 0, 3, 2);
+    expect(pixelAt(ctx, 4, 0)).toEqual([0, 128, 0, 255]);
+
+    ctx.drawImage(source, 2, 0, 1, 2, 6, 0, 1, 2);
+    expect(pixelAt(ctx, 6, 1)).toEqual([0, 0, 255, 255]);
+  });
+
+  it("applies drawImage transform alpha composite and nearest-neighbor smoothing", async () => {
+    const source = await createTestCanvas(2, 1);
+    const sourceContext = source.getContext("2d");
+    sourceContext.fillStyle = "red";
+    sourceContext.fillRect(0, 0, 1, 1);
+    sourceContext.fillStyle = "blue";
+    sourceContext.fillRect(1, 0, 1, 1);
+
+    const canvas = await createTestCanvas(5, 3);
+    const ctx = canvas.getContext("2d");
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.5;
+    ctx.translate(1, 1);
+    ctx.drawImage(source, 0, 0, 4, 1);
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 128]);
+    expect(pixelAt(ctx, 2, 1)).toEqual([255, 0, 0, 128]);
+    expect(pixelAt(ctx, 3, 1)).toEqual([0, 0, 255, 128]);
+  });
+
+  it("measures text with deterministic fallback metrics", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    const small = ctx.measureText("abc");
+    ctx.font = "20px sans-serif";
+    ctx.letterSpacing = "2px";
+    ctx.wordSpacing = "4px";
+    const large = ctx.measureText("a b");
+
+    expect(small.width).toBeGreaterThan(0);
+    expect(large.width).toBeGreaterThan(small.width);
+    expect(large.actualBoundingBoxRight).toBe(large.width);
+    expect(large.fontBoundingBoxAscent).toBeGreaterThan(0);
   });
 
   it("falls back to PNG for unsupported serialization MIME types", async () => {
