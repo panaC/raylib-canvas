@@ -1,4 +1,4 @@
-import { Canvas, RaylibCanvasRenderer, type CanvasImageData, type RaylibCanvasWasmModule } from "../../src/index";
+import { Canvas, RaylibCanvas2DContext, type CanvasImageData, type RaylibCanvasWasmModule } from "../../src/index";
 
 type Raylib2DContext = NonNullable<ReturnType<Canvas["getContext"]>>;
 
@@ -7,12 +7,12 @@ interface BackingCanvas {
   readonly height: number;
   readonly canvas: Canvas;
   readonly context: Raylib2DContext;
-  readonly renderer?: RaylibCanvasRenderer;
+  readonly raylibContext?: RaylibCanvas2DContext;
 }
 
 const backings = new WeakMap<HTMLCanvasElement, BackingCanvas>();
 const wrappers = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
-const rendererBackend = process.env.RAYLIB_CANVAS_RENDERER;
+const contextBackend = process.env.RAYLIB_CANVAS_CONTEXT;
 
 const originalSetAttribute = Element.prototype.setAttribute;
 const originalRemoveAttribute = Element.prototype.removeAttribute;
@@ -153,16 +153,21 @@ function getOrCreateBacking(domCanvas: HTMLCanvasElement): BackingCanvas {
     return existing;
   }
 
-  const renderer = createRenderer(width, height);
-  const canvas = new Canvas(width, height, renderer ? { renderer } : {});
+  const canvas = new Canvas(width, height, contextBackend === "raylib" ? { context: createRaylibContext } : {});
   const context = canvas.getContext("2d");
-  const backing = { width, height, canvas, context, renderer };
+  const backing = {
+    width,
+    height,
+    canvas,
+    context,
+    raylibContext: context instanceof RaylibCanvas2DContext ? context : undefined
+  };
   backings.set(domCanvas, backing);
   return backing;
 }
 
 function resetBacking(domCanvas: HTMLCanvasElement): void {
-  backings.get(domCanvas)?.renderer?.dispose();
+  backings.get(domCanvas)?.raylibContext?.dispose();
   backings.delete(domCanvas);
 }
 
@@ -209,17 +214,13 @@ function isCanvasDimensionAttribute(name: string): boolean {
   return normalized === "width" || normalized === "height";
 }
 
-function createRenderer(width: number, height: number): RaylibCanvasRenderer | undefined {
-  if (rendererBackend !== "raylib") {
-    return undefined;
-  }
-
+function createRaylibContext(canvas: Canvas): RaylibCanvas2DContext {
   const module = (globalThis as typeof globalThis & { __raylibCanvasWasmModule?: RaylibCanvasWasmModule })
     .__raylibCanvasWasmModule;
 
   if (!module) {
-    throw new Error("RAYLIB_CANVAS_RENDERER=raylib requires __raylibCanvasWasmModule to be preloaded.");
+    throw new Error("RAYLIB_CANVAS_CONTEXT=raylib requires __raylibCanvasWasmModule to be preloaded.");
   }
 
-  return new RaylibCanvasRenderer(width, height, module);
+  return new RaylibCanvas2DContext(canvas, module);
 }

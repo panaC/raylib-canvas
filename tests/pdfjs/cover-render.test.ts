@@ -7,7 +7,7 @@ import { PNG } from "pngjs";
 import {
   Canvas,
   CanvasPath2D,
-  RaylibCanvasRenderer,
+  RaylibCanvas2DContext,
   loadRaylibCanvasModule,
   type Canvas2DContext,
   type RaylibCanvasWasmModule
@@ -21,19 +21,19 @@ const PERFORMANCE_RESULT_PATH = join(PROJECT_ROOT, "test-results", "pdfjs", "cov
 type CanvasAndContext = {
   canvas: Canvas | null;
   context: Canvas2DContext | null;
-  renderer: RaylibCanvasRenderer | null;
+  raylibContext: RaylibCanvas2DContext | null;
 };
 
-const USE_RAYLIB_RENDERER = process.env.RAYLIB_CANVAS_RENDERER === "raylib";
-const RENDERER_NAME = USE_RAYLIB_RENDERER ? "raylib WASM renderer" : "JavaScript renderer";
+const USE_RAYLIB_CONTEXT = process.env.RAYLIB_CANVAS_CONTEXT === "raylib";
+const CONTEXT_NAME = USE_RAYLIB_CONTEXT ? "raylib WASM context" : "JavaScript context";
 const COVER_PNG_PATH = join(
   TEST_DIR,
-  USE_RAYLIB_RENDERER ? "compressed.tracemonkey-pldi-09-cover-raylib.png" : "compressed.tracemonkey-pldi-09-cover.png"
+  USE_RAYLIB_CONTEXT ? "compressed.tracemonkey-pldi-09-cover-raylib.png" : "compressed.tracemonkey-pldi-09-cover.png"
 );
 let raylibModule: RaylibCanvasWasmModule | undefined;
 
 type CoverRenderTiming = {
-  renderer: string;
+  context: string;
   coverPng: string;
   width: number;
   height: number;
@@ -106,7 +106,7 @@ async function writePerformanceResult(result: CoverRenderTiming): Promise<void> 
 
   report.fixture = "tests/pdfjs/compressed.tracemonkey-pldi-09.pdf";
   report.scale = 1;
-  report.results[result.renderer] = result;
+  report.results[result.context] = result;
 
   await writeFile(PERFORMANCE_RESULT_PATH, `${JSON.stringify(report, null, 2)}\n`);
 }
@@ -114,26 +114,26 @@ async function writePerformanceResult(result: CoverRenderTiming): Promise<void> 
 function createCanvasAndContext(width: number, height: number): CanvasAndContext {
   const canvasWidth = Math.ceil(width);
   const canvasHeight = Math.ceil(height);
-  const renderer = createRenderer(canvasWidth, canvasHeight);
-  const canvas = new Canvas(canvasWidth, canvasHeight, renderer ? { renderer } : {});
+  const canvas = new Canvas(
+    canvasWidth,
+    canvasHeight,
+    USE_RAYLIB_CONTEXT ? { context: createRaylibContext } : {}
+  );
+  const context = canvas.getContext("2d");
 
   return {
     canvas,
-    context: canvas.getContext("2d"),
-    renderer
+    context,
+    raylibContext: context instanceof RaylibCanvas2DContext ? context : null
   };
 }
 
-function createRenderer(width: number, height: number): RaylibCanvasRenderer | undefined {
-  if (!USE_RAYLIB_RENDERER) {
-    return undefined;
-  }
-
+function createRaylibContext(canvas: Canvas): RaylibCanvas2DContext {
   if (!raylibModule) {
     throw new Error("raylib module was not loaded before creating a pdf.js canvas");
   }
 
-  return new RaylibCanvasRenderer(width, height, raylibModule);
+  return new RaylibCanvas2DContext(canvas, raylibModule);
 }
 
 class RaylibCanvasFactory {
@@ -142,24 +142,24 @@ class RaylibCanvasFactory {
   }
 
   reset(canvasAndContext: CanvasAndContext, width: number, height: number): void {
-    canvasAndContext.renderer?.dispose();
+    canvasAndContext.raylibContext?.dispose();
     const reset = createCanvasAndContext(width, height);
     canvasAndContext.canvas = reset.canvas;
     canvasAndContext.context = reset.context;
-    canvasAndContext.renderer = reset.renderer;
+    canvasAndContext.raylibContext = reset.raylibContext;
   }
 
   destroy(canvasAndContext: CanvasAndContext): void {
-    canvasAndContext.renderer?.dispose();
+    canvasAndContext.raylibContext?.dispose();
     canvasAndContext.canvas = null;
     canvasAndContext.context = null;
-    canvasAndContext.renderer = null;
+    canvasAndContext.raylibContext = null;
   }
 }
 
 describe("pdfjs-dist cover rendering", () => {
   beforeAll(async () => {
-    if (USE_RAYLIB_RENDERER) {
+    if (USE_RAYLIB_CONTEXT) {
       raylibModule = await loadRaylibCanvasModule();
     }
   });
@@ -200,7 +200,7 @@ describe("pdfjs-dist cover rendering", () => {
       const pngEncodeStart = performance.now();
       const pngBytes = await toPngBytes(canvasAndContext.canvas!);
       const pngEncodeEnd = performance.now();
-      canvasAndContext.renderer?.dispose();
+      canvasAndContext.raylibContext?.dispose();
       const pngWriteStart = performance.now();
       await writeFile(COVER_PNG_PATH, pngBytes);
       const pngWriteEnd = performance.now();
@@ -214,8 +214,8 @@ describe("pdfjs-dist cover rendering", () => {
       expect(nonWhitePixels).toBeGreaterThan(1_000);
 
       await writePerformanceResult({
-        renderer: RENDERER_NAME,
-        coverPng: USE_RAYLIB_RENDERER
+        context: CONTEXT_NAME,
+        coverPng: USE_RAYLIB_CONTEXT
           ? "tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png"
           : "tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png",
         width: png.width,

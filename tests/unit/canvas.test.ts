@@ -1,22 +1,30 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createCanvas, createRaylibCanvasRenderer } from "../../src/index";
+import { createCanvas, createRaylibCanvas2DContextFactory } from "../../src/index";
 
-const USE_RAYLIB_RENDERER = process.env.RAYLIB_CANVAS_RENDERER === "raylib";
-const disposableRenderers: Array<{ dispose(): void }> = [];
+const USE_RAYLIB_CONTEXT = process.env.RAYLIB_CANVAS_CONTEXT === "raylib";
+const disposableContexts: Array<{ dispose(): void }> = [];
 
 async function createTestCanvas(width: number, height: number): Promise<Awaited<ReturnType<typeof createCanvas>>> {
-  const renderer = USE_RAYLIB_RENDERER ? await createRaylibCanvasRenderer(width, height) : undefined;
+  const createContext = USE_RAYLIB_CONTEXT ? await createRaylibCanvas2DContextFactory() : undefined;
 
-  if (renderer) {
-    disposableRenderers.push(renderer);
-  }
-
-  return createCanvas(width, height, renderer ? { renderer } : {});
+  return createCanvas(
+    width,
+    height,
+    createContext
+      ? {
+          context(canvas) {
+            const context = createContext(canvas);
+            disposableContexts.push(context as { dispose(): void });
+            return context;
+          }
+        }
+      : {}
+  );
 }
 
 afterEach(() => {
-  for (const renderer of disposableRenderers.splice(0)) {
-    renderer.dispose();
+  for (const context of disposableContexts.splice(0)) {
+    context.dispose();
   }
 });
 
@@ -150,16 +158,23 @@ describe("createCanvas", () => {
     expect(canvas.toDataURL("image/jpeg")).toMatch(/^data:image\/png;base64,/);
   });
 
-  it.runIf(USE_RAYLIB_RENDERER)("returns a live mutable pixel view from the raylib renderer", async () => {
-    const renderer = await createRaylibCanvasRenderer(2, 2);
-    disposableRenderers.push(renderer);
-    const pixels = renderer.getPixels();
+  it.runIf(USE_RAYLIB_CONTEXT)("returns a live mutable pixel view from the raylib context", async () => {
+    const createContext = await createRaylibCanvas2DContextFactory();
+    const canvas = await createCanvas(2, 2, {
+      context(canvas) {
+        const context = createContext(canvas);
+        disposableContexts.push(context as { dispose(): void });
+        return context;
+      }
+    });
+    const context = canvas.getContext("2d");
+    const pixels = context.getPixels();
 
     pixels[0] = 12;
     pixels[1] = 34;
     pixels[2] = 56;
     pixels[3] = 78;
 
-    expect(Array.from(renderer.getPixels().slice(0, 4))).toEqual([12, 34, 56, 78]);
+    expect(Array.from(context.getPixels().slice(0, 4))).toEqual([12, 34, 56, 78]);
   });
 });

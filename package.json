@@ -1,7 +1,7 @@
 {
   "name": "raylib-canvas",
   "version": "0.1.0",
-  "description": "Canvas-like 2D API starter pack with pluggable renderers.",
+  "description": "Canvas-like 2D API starter pack with swappable contexts.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

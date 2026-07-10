@@ -15,14 +15,14 @@ await esbuild.build({
   format: "iife",
   outfile: WPT_SHIM_OUTPUT,
   define: {
-    "process.env.RAYLIB_CANVAS_RENDERER": JSON.stringify(process.env.RAYLIB_CANVAS_RENDERER ?? "")
+    "process.env.RAYLIB_CANVAS_CONTEXT": JSON.stringify(process.env.RAYLIB_CANVAS_CONTEXT ?? "")
   },
   alias: {
     pngjs: "./node_modules/pngjs/browser.js"
   }
 });
 
-if (process.env.RAYLIB_CANVAS_RENDERER === "raylib") {
+if (process.env.RAYLIB_CANVAS_CONTEXT === "raylib") {
   if (!existsSync(RAYLIB_WPT_PRELOAD)) {
     throw new Error(
       `Raylib WPT preload is missing at ${RAYLIB_WPT_PRELOAD}. Run: npm run build:raylib-wasm`

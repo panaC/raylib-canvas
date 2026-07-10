@@ -40,7 +40,7 @@ default and emits both the normal Emscripten module and a single-file WPT
 preload. Users with a host Emscripten install can run
 `npm run build:raylib-wasm:native` to produce the same artifacts without
 Docker. `build-wpt-shim` prepends the preload to the injected shim when
-`RAYLIB_CANVAS_RENDERER=raylib`, so WPT pages receive a ready
+`RAYLIB_CANVAS_CONTEXT=raylib`, so WPT pages receive a ready
 `__raylibCanvasWasmModule` before any patched canvas context is created.
 
 The smoke suite is listed in `tests/wpt/canvas-smoke-tests.txt`. It currently

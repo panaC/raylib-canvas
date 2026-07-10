@@ -5,7 +5,7 @@ const suite = process.argv[2];
 const vitest = join("node_modules", "vitest", "vitest.mjs");
 const env = {
   ...process.env,
-  RAYLIB_CANVAS_RENDERER: "raylib"
+  RAYLIB_CANVAS_CONTEXT: "raylib"
 };
 
 const commands = {

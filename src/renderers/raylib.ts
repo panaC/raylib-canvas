@@ -1,4 +1,5 @@
-import type { CanvasRenderer, Rgba } from "../index";
+import { Canvas2DRenderingContext, type Rgba } from "../context";
+import type { Canvas, Canvas2DContextFactory } from "../index";
 
 declare const RAYLIB_CANVAS_IMPORT_META_URL: string | undefined;
 
@@ -36,51 +37,42 @@ export interface RaylibCanvasModuleLoadOptions {
   moduleUrl?: string | URL;
 }
 
-export interface RaylibCanvasRendererOptions extends RaylibCanvasModuleLoadOptions {}
+export interface RaylibCanvas2DContextOptions extends RaylibCanvasModuleLoadOptions {}
 
-export class RaylibCanvasRenderer implements CanvasRenderer {
-  readonly width: number;
-  readonly height: number;
+export class RaylibCanvas2DContext extends Canvas2DRenderingContext {
   readonly #module: RaylibCanvasWasmModule;
   #handle: number;
   #pixelPointer: number;
   #pixelLength: number;
   #pixels: Uint8ClampedArray;
 
-  constructor(width: number, height: number, module: RaylibCanvasWasmModule) {
-    assertPositiveInteger(width, "width");
-    assertPositiveInteger(height, "height");
+  constructor(canvas: Canvas, module: RaylibCanvasWasmModule) {
+    super(canvas);
+    assertPositiveInteger(canvas.width, "width");
+    assertPositiveInteger(canvas.height, "height");
 
-    this.width = width;
-    this.height = height;
     this.#module = module;
-    this.#handle = module._rcl_init(width, height);
+    this.#handle = module._rcl_init(canvas.width, canvas.height);
 
     if (this.#handle === 0) {
-      throw new Error("raylib renderer allocation failed");
+      throw new Error("raylib context allocation failed");
     }
 
     this.#pixelPointer = module._rcl_pixels_ptr(this.#handle);
     this.#pixelLength = module._rcl_pixels_len(this.#handle);
 
-    if (this.#pixelPointer === 0 || this.#pixelLength !== width * height * 4) {
+    if (this.#pixelPointer === 0 || this.#pixelLength !== canvas.width * canvas.height * 4) {
       module._rcl_destroy(this.#handle);
       this.#handle = 0;
-      throw new Error("raylib renderer returned an invalid pixel buffer");
+      throw new Error("raylib context returned an invalid pixel buffer");
     }
 
     this.#pixels = this.#createPixelsView();
   }
 
-  fillRect(x: number, y: number, width: number, height: number, color: Rgba): void {
+  protected fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void {
     this.#assertNotDisposed();
     this.#module._rcl_fill_rect(this.#handle, x, y, width, height, color[0], color[1], color[2], color[3]);
-    this.#refreshPixelsView();
-  }
-
-  clearRect(x: number, y: number, width: number, height: number): void {
-    this.#assertNotDisposed();
-    this.#module._rcl_clear_rect(this.#handle, x, y, width, height);
     this.#refreshPixelsView();
   }
 
@@ -114,18 +106,16 @@ export class RaylibCanvasRenderer implements CanvasRenderer {
 
   #assertNotDisposed(): void {
     if (this.#handle === 0) {
-      throw new Error("raylib renderer has been disposed");
+      throw new Error("raylib context has been disposed");
     }
   }
 }
 
-export async function createRaylibCanvasRenderer(
-  width: number,
-  height: number,
-  options: RaylibCanvasRendererOptions = {}
-): Promise<RaylibCanvasRenderer> {
+export async function createRaylibCanvas2DContextFactory(
+  options: RaylibCanvas2DContextOptions = {}
+): Promise<Canvas2DContextFactory> {
   const module = await loadRaylibCanvasModule(options);
-  return new RaylibCanvasRenderer(width, height, module);
+  return (canvas) => new RaylibCanvas2DContext(canvas, module);
 }
 
 export async function loadRaylibCanvasModule(
@@ -165,7 +155,7 @@ async function loadDefaultRaylibModule(moduleUrl?: string | URL): Promise<Raylib
   }
 
   const error = new Error(
-    "Could not load raylib WASM module. Run `npm run build:raylib-wasm` first, or pass `module`/`moduleUrl` to `createRaylibCanvasRenderer()`."
+    "Could not load raylib WASM module. Run `npm run build:raylib-wasm` first, or pass `module`/`moduleUrl` to `createRaylibCanvas2DContextFactory()`."
   );
   (error as Error & { cause?: unknown }).cause = lastError;
   throw error;
