@@ -40,6 +40,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install WPT system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gir1.2-atspi-2.0 \
+            libcairo2-dev \
+            libgirepository1.0-dev \
+            pkg-config \
+            python3-dev
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
