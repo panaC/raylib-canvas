@@ -46,16 +46,16 @@
 | `setLineDash(segments)` | [WHATWG setLineDash](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-setlinedash-dev) | done |
 | `getLineDash()` | [WHATWG getLineDash](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-getlinedash-dev) | done |
 | `lineDashOffset` | [WHATWG lineDashOffset](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linedashoffset-dev) | done |
-| `font` | [WHATWG font](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-font-dev) | waiting |
-| `textAlign` | [WHATWG textAlign](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textalign-dev) | waiting |
-| `textBaseline` | [WHATWG textBaseline](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textbaseline-dev) | waiting |
-| `direction` | [WHATWG direction](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-direction-dev) | waiting |
-| `letterSpacing` | [WHATWG letterSpacing](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-letterspacing-dev) | waiting |
-| `wordSpacing` | [WHATWG wordSpacing](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-wordspacing-dev) | waiting |
-| `fontKerning` | [WHATWG fontKerning](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontkerning-dev) | waiting |
-| `fontStretch` | [WHATWG fontStretch](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontstretch-dev) | waiting |
-| `fontVariantCaps` | [WHATWG fontVariantCaps](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontvariantcaps-dev) | waiting |
-| `textRendering` | [WHATWG textRendering](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textrendering-dev) | waiting |
+| `font` | [WHATWG font](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-font-dev) | partial |
+| `textAlign` | [WHATWG textAlign](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textalign-dev) | done |
+| `textBaseline` | [WHATWG textBaseline](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textbaseline-dev) | done |
+| `direction` | [WHATWG direction](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-direction-dev) | done |
+| `letterSpacing` | [WHATWG letterSpacing](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-letterspacing-dev) | done |
+| `wordSpacing` | [WHATWG wordSpacing](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-wordspacing-dev) | done |
+| `fontKerning` | [WHATWG fontKerning](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontkerning-dev) | done |
+| `fontStretch` | [WHATWG fontStretch](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontstretch-dev) | done |
+| `fontVariantCaps` | [WHATWG fontVariantCaps](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontvariantcaps-dev) | done |
+| `textRendering` | [WHATWG textRendering](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textrendering-dev) | done |
 | `fillStyle` | [WHATWG fillStyle](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fillstyle-dev) | partial |
 | `strokeStyle` | [WHATWG strokeStyle](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokestyle-dev) | waiting |
 | `createLinearGradient(x0, y0, x1, y1)` | [WHATWG createLinearGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createlineargradient-dev) | waiting |

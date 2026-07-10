@@ -61,6 +61,16 @@ covers official upstream files for:
 - line dash state behavior is covered by unit tests; the current upstream
   `setLineDash()` WPT also requires `strokeRect()` rendering, which is not part
   of the smoke suite yet
+- text style defaults and valid/invalid assignment behavior for `textAlign`,
+  `textBaseline`, `direction`, `fontStretch`, `fontVariantCaps`, and
+  `textRendering`
+- basic `font` parsing/default/invalid-retention behavior; full CSS font
+  shorthand computation and system font support remain partial
+- `letterSpacing` and `wordSpacing` absolute length parsing plus invalid and
+  non-finite assignment behavior
+- `fontKerning` state behavior is covered by unit tests; the current upstream
+  `fontKerning` WPT also requires `measureText()` metrics, which are not part
+  of the smoke suite yet
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
   errors, negative-size reads, and non-finite argument errors
 - `getTransform()` identity, scale, rotate, translate, reset, and DOMMatrix

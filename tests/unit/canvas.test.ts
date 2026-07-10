@@ -224,6 +224,181 @@ describe("createCanvas", () => {
     expect(ctx.lineDashOffset).toBe(5);
   });
 
+  it("exposes default text drawing styles", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.font).toBe("10px sans-serif");
+    expect(ctx.textAlign).toBe("start");
+    expect(ctx.textBaseline).toBe("alphabetic");
+    expect(ctx.direction).toBe("inherit");
+    expect(ctx.letterSpacing).toBe("0px");
+    expect(ctx.wordSpacing).toBe("0px");
+    expect(ctx.fontKerning).toBe("auto");
+    expect(ctx.fontStretch).toBe("normal");
+    expect(ctx.fontVariantCaps).toBe("normal");
+    expect(ctx.textRendering).toBe("auto");
+  });
+
+  it("validates text alignment and direction assignments", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.direction = "rtl";
+
+    expect(ctx.textAlign).toBe("center");
+    expect(ctx.textBaseline).toBe("middle");
+    expect(ctx.direction).toBe("rtl");
+
+    ctx.textAlign = "CENTER" as typeof ctx.textAlign;
+    ctx.textAlign = "invalid" as typeof ctx.textAlign;
+    ctx.textBaseline = "baseline" as typeof ctx.textBaseline;
+    ctx.textBaseline = "Middle" as typeof ctx.textBaseline;
+    ctx.direction = "RTL" as typeof ctx.direction;
+    ctx.direction = "invalid" as typeof ctx.direction;
+
+    expect(ctx.textAlign).toBe("center");
+    expect(ctx.textBaseline).toBe("middle");
+    expect(ctx.direction).toBe("rtl");
+  });
+
+  it("validates font feature text style assignments", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fontKerning = "none";
+    ctx.fontStretch = "expanded";
+    ctx.fontVariantCaps = "small-caps";
+    ctx.textRendering = "optimizeLegibility";
+
+    expect(ctx.fontKerning).toBe("none");
+    expect(ctx.fontStretch).toBe("expanded");
+    expect(ctx.fontVariantCaps).toBe("small-caps");
+    expect(ctx.textRendering).toBe("optimizeLegibility");
+
+    ctx.fontKerning = "NONE" as typeof ctx.fontKerning;
+    ctx.fontKerning = "invalid" as typeof ctx.fontKerning;
+    ctx.fontStretch = "Expanded" as typeof ctx.fontStretch;
+    ctx.fontStretch = "invalid" as typeof ctx.fontStretch;
+    ctx.fontVariantCaps = "Small-Caps" as typeof ctx.fontVariantCaps;
+    ctx.fontVariantCaps = "invalid" as typeof ctx.fontVariantCaps;
+    ctx.textRendering = "optimizespeed" as typeof ctx.textRendering;
+    ctx.textRendering = "invalid" as typeof ctx.textRendering;
+
+    expect(ctx.fontKerning).toBe("none");
+    expect(ctx.fontStretch).toBe("expanded");
+    expect(ctx.fontVariantCaps).toBe("small-caps");
+    expect(ctx.textRendering).toBe("optimizeLegibility");
+  });
+
+  it("parses and serializes supported font assignments", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.font = "20px serif";
+    expect(ctx.font).toBe("20px serif");
+
+    ctx.font = "20PX   SERIF";
+    expect(ctx.font).toBe("20px serif");
+
+    ctx.font = "italic 400 12px/2 Unknown Font, sans-serif";
+    expect(ctx.font).toBe('italic 12px "Unknown Font", sans-serif');
+
+    ctx.font = "bold small-caps expanded 16pt 'Display Face'";
+    expect(ctx.font).toBe('small-caps bold expanded 16pt "Display Face"');
+  });
+
+  it("ignores invalid font assignments", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.font = "20px serif";
+
+    for (const value of [
+      "",
+      "bogus",
+      "inherit",
+      "10px {bogus}",
+      "10px initial",
+      "10px default",
+      "10px inherit",
+      "10px revert",
+      "var(--x)",
+      "var(--x, 10px serif)",
+      "1em serif; background: green; margin: 10px",
+      "0px serif",
+      "12px"
+    ]) {
+      ctx.font = value;
+      expect(ctx.font).toBe("20px serif");
+    }
+  });
+
+  it("parses text spacing as CSS lengths", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.letterSpacing = "3px";
+    ctx.wordSpacing = "5PX";
+    expect(ctx.letterSpacing).toBe("3px");
+    expect(ctx.wordSpacing).toBe("5px");
+
+    ctx.letterSpacing = "-1px";
+    ctx.wordSpacing = "0";
+    expect(ctx.letterSpacing).toBe("-1px");
+    expect(ctx.wordSpacing).toBe("0px");
+
+    ctx.letterSpacing = "normal";
+    ctx.letterSpacing = "calc(1px + 1px)";
+    ctx.wordSpacing = "NaNpx";
+    ctx.wordSpacing = "1%";
+
+    expect(ctx.letterSpacing).toBe("-1px");
+    expect(ctx.wordSpacing).toBe("0px");
+  });
+
+  it("saves and restores text drawing style state", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.font = "italic 12px serif";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.direction = "ltr";
+    ctx.letterSpacing = "2px";
+    ctx.wordSpacing = "4px";
+    ctx.fontKerning = "none";
+    ctx.fontStretch = "condensed";
+    ctx.fontVariantCaps = "all-small-caps";
+    ctx.textRendering = "geometricPrecision";
+    ctx.save();
+
+    ctx.font = "20px monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.direction = "rtl";
+    ctx.letterSpacing = "8px";
+    ctx.wordSpacing = "10px";
+    ctx.fontKerning = "normal";
+    ctx.fontStretch = "expanded";
+    ctx.fontVariantCaps = "titling-caps";
+    ctx.textRendering = "optimizeSpeed";
+    ctx.restore();
+
+    expect(ctx.font).toBe("italic 12px serif");
+    expect(ctx.textAlign).toBe("right");
+    expect(ctx.textBaseline).toBe("top");
+    expect(ctx.direction).toBe("ltr");
+    expect(ctx.letterSpacing).toBe("2px");
+    expect(ctx.wordSpacing).toBe("4px");
+    expect(ctx.fontKerning).toBe("none");
+    expect(ctx.fontStretch).toBe("condensed");
+    expect(ctx.fontVariantCaps).toBe("all-small-caps");
+    expect(ctx.textRendering).toBe("geometricPrecision");
+  });
+
   it("applies globalAlpha to filled rectangles", async () => {
     const canvas = await createTestCanvas(2, 2);
     const ctx = canvas.getContext("2d");

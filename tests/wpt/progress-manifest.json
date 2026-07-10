@@ -43,8 +43,8 @@
     },
     {
       "status": "blocked",
-      "prefix": "html/canvas/element/text-styles/",
-      "reason": "Text styles and font parsing are not implemented yet."
+      "prefix": "html/canvas/element/text/",
+      "reason": "Text style state and basic font/spacing parsing have smoke coverage; remaining text WPTs require fillText(), strokeText(), measureText(), font loading, or text metrics."
     },
     {
       "status": "blocked",

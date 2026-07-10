@@ -68,6 +68,66 @@ export interface Canvas2DContext {
   getLineDash(): number[];
 
   /**
+   * CSS font shorthand used for text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-font-dev
+   */
+  font: string;
+
+  /**
+   * Horizontal alignment for text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textalign-dev
+   */
+  textAlign: CanvasTextAlign;
+
+  /**
+   * Baseline alignment for text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textbaseline-dev
+   */
+  textBaseline: CanvasTextBaseline;
+
+  /**
+   * Text direction used by text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-direction-dev
+   */
+  direction: CanvasDirection;
+
+  /**
+   * Extra spacing between text grapheme clusters.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-letterspacing-dev
+   */
+  letterSpacing: string;
+
+  /**
+   * Extra spacing between words.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-wordspacing-dev
+   */
+  wordSpacing: string;
+
+  /**
+   * Font kerning mode used by text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontkerning-dev
+   */
+  fontKerning: CanvasFontKerning;
+
+  /**
+   * Font stretch mode used by text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontstretch-dev
+   */
+  fontStretch: CanvasFontStretch;
+
+  /**
+   * Font variant caps mode used by text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontvariantcaps-dev
+   */
+  fontVariantCaps: CanvasFontVariantCaps;
+
+  /**
+   * Text rendering hint used by text drawing.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textrendering-dev
+   */
+  textRendering: CanvasTextRendering;
+
+  /**
    * Returns the live RGBA backing pixels for encoding and diagnostics.
    * This is a deliberate package extension, not part of the web Canvas API.
    */
@@ -214,6 +274,27 @@ type GlobalCompositeOperation =
   | "color"
   | "luminosity";
 
+type CanvasFontKerning = "auto" | "normal" | "none";
+type CanvasFontStretch =
+  | "ultra-condensed"
+  | "extra-condensed"
+  | "condensed"
+  | "semi-condensed"
+  | "normal"
+  | "semi-expanded"
+  | "expanded"
+  | "extra-expanded"
+  | "ultra-expanded";
+type CanvasFontVariantCaps =
+  | "normal"
+  | "small-caps"
+  | "all-small-caps"
+  | "petite-caps"
+  | "all-petite-caps"
+  | "unicase"
+  | "titling-caps";
+type CanvasTextRendering = "auto" | "optimizeSpeed" | "optimizeLegibility" | "geometricPrecision";
+
 type Matrix2D = readonly [number, number, number, number, number, number];
 
 type PathCommand =
@@ -251,6 +332,15 @@ type CanvasState = {
   readonly miterLimit: number;
   readonly globalCompositeOperation: string;
   readonly font: string;
+  readonly textAlign: CanvasTextAlign;
+  readonly textBaseline: CanvasTextBaseline;
+  readonly direction: CanvasDirection;
+  readonly letterSpacing: string;
+  readonly wordSpacing: string;
+  readonly fontKerning: CanvasFontKerning;
+  readonly fontStretch: CanvasFontStretch;
+  readonly fontVariantCaps: CanvasFontVariantCaps;
+  readonly textRendering: CanvasTextRendering;
   readonly filter: string;
   readonly lineDash: readonly number[];
   readonly lineDashOffset: number;
@@ -297,6 +387,121 @@ const GLOBAL_COMPOSITE_OPERATIONS = new Set<string>([
 ]);
 const CANVAS_LINE_CAPS = new Set<string>(["butt", "round", "square"]);
 const CANVAS_LINE_JOINS = new Set<string>(["round", "bevel", "miter"]);
+const CANVAS_TEXT_ALIGNS = new Set<string>(["start", "end", "left", "right", "center"]);
+const CANVAS_TEXT_BASELINES = new Set<string>(["top", "hanging", "middle", "alphabetic", "ideographic", "bottom"]);
+const CANVAS_DIRECTIONS = new Set<string>(["ltr", "rtl", "inherit"]);
+const CANVAS_FONT_KERNINGS = new Set<string>(["auto", "normal", "none"]);
+const CANVAS_FONT_STRETCHES = new Set<string>([
+  "ultra-condensed",
+  "extra-condensed",
+  "condensed",
+  "semi-condensed",
+  "normal",
+  "semi-expanded",
+  "expanded",
+  "extra-expanded",
+  "ultra-expanded"
+]);
+const CANVAS_FONT_VARIANT_CAPS = new Set<string>([
+  "normal",
+  "small-caps",
+  "all-small-caps",
+  "petite-caps",
+  "all-petite-caps",
+  "unicase",
+  "titling-caps"
+]);
+const CANVAS_TEXT_RENDERINGS = new Set<string>([
+  "auto",
+  "optimizeSpeed",
+  "optimizeLegibility",
+  "geometricPrecision"
+]);
+const CSS_LENGTH_UNITS = new Set<string>([
+  "cap",
+  "ch",
+  "cm",
+  "dvb",
+  "dvh",
+  "dvi",
+  "dvmax",
+  "dvmin",
+  "dvw",
+  "em",
+  "ex",
+  "ic",
+  "in",
+  "lh",
+  "lvb",
+  "lvh",
+  "lvi",
+  "lvmax",
+  "lvmin",
+  "lvw",
+  "mm",
+  "pc",
+  "pt",
+  "px",
+  "q",
+  "rcap",
+  "rch",
+  "rem",
+  "rex",
+  "ric",
+  "rlh",
+  "svb",
+  "svh",
+  "svi",
+  "svmax",
+  "svmin",
+  "svw",
+  "vb",
+  "vh",
+  "vi",
+  "vmax",
+  "vmin",
+  "vw"
+]);
+const FONT_STYLE_KEYWORDS = new Set<string>(["normal", "italic", "oblique"]);
+const FONT_VARIANT_KEYWORDS = new Set<string>([
+  "normal",
+  "small-caps",
+  "all-small-caps",
+  "petite-caps",
+  "all-petite-caps",
+  "unicase",
+  "titling-caps"
+]);
+const FONT_WEIGHT_KEYWORDS = new Set<string>(["normal", "bold", "bolder", "lighter"]);
+const FONT_STRETCH_KEYWORDS = CANVAS_FONT_STRETCHES;
+const FONT_SIZE_KEYWORDS = new Set<string>([
+  "xx-small",
+  "x-small",
+  "small",
+  "medium",
+  "large",
+  "x-large",
+  "xx-large",
+  "xxx-large",
+  "larger",
+  "smaller"
+]);
+const GENERIC_FONT_FAMILIES = new Set<string>([
+  "serif",
+  "sans-serif",
+  "monospace",
+  "cursive",
+  "fantasy",
+  "system-ui",
+  "ui-serif",
+  "ui-sans-serif",
+  "ui-monospace",
+  "ui-rounded",
+  "math",
+  "emoji",
+  "fangsong"
+]);
+const PROPERTY_WIDE_KEYWORDS = new Set<string>(["inherit", "initial", "revert", "revert-layer", "unset", "default"]);
 
 export class CanvasPath2D {
   readonly #commands: PathCommand[] = [];
@@ -535,9 +740,18 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #lineJoin: CanvasLineJoin = "miter";
   #miterLimit = 10;
   #lineDashOffset = 0;
+  #font = "10px sans-serif";
+  #textAlign: CanvasTextAlign = "start";
+  #textBaseline: CanvasTextBaseline = "alphabetic";
+  #direction: CanvasDirection = "inherit";
+  #letterSpacing = "0px";
+  #wordSpacing = "0px";
+  #fontKerning: CanvasFontKerning = "auto";
+  #fontStretch: CanvasFontStretch = "normal";
+  #fontVariantCaps: CanvasFontVariantCaps = "normal";
+  #textRendering: CanvasTextRendering = "auto";
   strokeStyle = "#000000";
   fillRule: CanvasFillRule = "nonzero";
-  font = "10px sans-serif";
   filter = "none";
   imageSmoothingEnabled = true;
 
@@ -656,6 +870,132 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#lineDashOffset = offset;
   }
 
+  get font(): string {
+    return this.#font;
+  }
+
+  set font(value: string) {
+    const font = parseCanvasFont(String(value));
+
+    if (!font) {
+      return;
+    }
+
+    this.#font = font;
+  }
+
+  get textAlign(): CanvasTextAlign {
+    return this.#textAlign;
+  }
+
+  set textAlign(value: CanvasTextAlign) {
+    if (!isCanvasTextAlign(value)) {
+      return;
+    }
+
+    this.#textAlign = value;
+  }
+
+  get textBaseline(): CanvasTextBaseline {
+    return this.#textBaseline;
+  }
+
+  set textBaseline(value: CanvasTextBaseline) {
+    if (!isCanvasTextBaseline(value)) {
+      return;
+    }
+
+    this.#textBaseline = value;
+  }
+
+  get direction(): CanvasDirection {
+    return this.#direction;
+  }
+
+  set direction(value: CanvasDirection) {
+    if (!isCanvasDirection(value)) {
+      return;
+    }
+
+    this.#direction = value;
+  }
+
+  get letterSpacing(): string {
+    return this.#letterSpacing;
+  }
+
+  set letterSpacing(value: string) {
+    const length = parseCssLength(String(value));
+
+    if (!length) {
+      return;
+    }
+
+    this.#letterSpacing = length;
+  }
+
+  get wordSpacing(): string {
+    return this.#wordSpacing;
+  }
+
+  set wordSpacing(value: string) {
+    const length = parseCssLength(String(value));
+
+    if (!length) {
+      return;
+    }
+
+    this.#wordSpacing = length;
+  }
+
+  get fontKerning(): CanvasFontKerning {
+    return this.#fontKerning;
+  }
+
+  set fontKerning(value: CanvasFontKerning) {
+    if (!isCanvasFontKerning(value)) {
+      return;
+    }
+
+    this.#fontKerning = value;
+  }
+
+  get fontStretch(): CanvasFontStretch {
+    return this.#fontStretch;
+  }
+
+  set fontStretch(value: CanvasFontStretch) {
+    if (!isCanvasFontStretch(value)) {
+      return;
+    }
+
+    this.#fontStretch = value;
+  }
+
+  get fontVariantCaps(): CanvasFontVariantCaps {
+    return this.#fontVariantCaps;
+  }
+
+  set fontVariantCaps(value: CanvasFontVariantCaps) {
+    if (!isCanvasFontVariantCaps(value)) {
+      return;
+    }
+
+    this.#fontVariantCaps = value;
+  }
+
+  get textRendering(): CanvasTextRendering {
+    return this.#textRendering;
+  }
+
+  set textRendering(value: CanvasTextRendering) {
+    if (!isCanvasTextRendering(value)) {
+      return;
+    }
+
+    this.#textRendering = value;
+  }
+
   save(): void {
     this.#stateStack.push({
       fillStyle: this.#fillStyle,
@@ -670,6 +1010,15 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       miterLimit: this.miterLimit,
       globalCompositeOperation: this.globalCompositeOperation,
       font: this.font,
+      textAlign: this.textAlign,
+      textBaseline: this.textBaseline,
+      direction: this.direction,
+      letterSpacing: this.letterSpacing,
+      wordSpacing: this.wordSpacing,
+      fontKerning: this.fontKerning,
+      fontStretch: this.fontStretch,
+      fontVariantCaps: this.fontVariantCaps,
+      textRendering: this.textRendering,
       filter: this.filter,
       lineDash: [...this.#lineDash],
       lineDashOffset: this.lineDashOffset
@@ -695,6 +1044,15 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.miterLimit = state.miterLimit;
     this.globalCompositeOperation = state.globalCompositeOperation;
     this.font = state.font;
+    this.textAlign = state.textAlign;
+    this.textBaseline = state.textBaseline;
+    this.direction = state.direction;
+    this.letterSpacing = state.letterSpacing;
+    this.wordSpacing = state.wordSpacing;
+    this.fontKerning = state.fontKerning;
+    this.fontStretch = state.fontStretch;
+    this.fontVariantCaps = state.fontVariantCaps;
+    this.textRendering = state.textRendering;
     this.filter = state.filter;
     this.#lineDash = [...state.lineDash];
     this.lineDashOffset = state.lineDashOffset;
@@ -1258,6 +1616,313 @@ function isCanvasLineCap(value: unknown): value is CanvasLineCap {
 
 function isCanvasLineJoin(value: unknown): value is CanvasLineJoin {
   return typeof value === "string" && CANVAS_LINE_JOINS.has(value);
+}
+
+function isCanvasTextAlign(value: unknown): value is CanvasTextAlign {
+  return typeof value === "string" && CANVAS_TEXT_ALIGNS.has(value);
+}
+
+function isCanvasTextBaseline(value: unknown): value is CanvasTextBaseline {
+  return typeof value === "string" && CANVAS_TEXT_BASELINES.has(value);
+}
+
+function isCanvasDirection(value: unknown): value is CanvasDirection {
+  return typeof value === "string" && CANVAS_DIRECTIONS.has(value);
+}
+
+function isCanvasFontKerning(value: unknown): value is CanvasFontKerning {
+  return typeof value === "string" && CANVAS_FONT_KERNINGS.has(value);
+}
+
+function isCanvasFontStretch(value: unknown): value is CanvasFontStretch {
+  return typeof value === "string" && CANVAS_FONT_STRETCHES.has(value);
+}
+
+function isCanvasFontVariantCaps(value: unknown): value is CanvasFontVariantCaps {
+  return typeof value === "string" && CANVAS_FONT_VARIANT_CAPS.has(value);
+}
+
+function isCanvasTextRendering(value: unknown): value is CanvasTextRendering {
+  return typeof value === "string" && CANVAS_TEXT_RENDERINGS.has(value);
+}
+
+function parseCssLength(value: string): string | undefined {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.length === 0 || normalized.includes(";") || normalized.includes("calc(")) {
+    return undefined;
+  }
+
+  const match = /^([+-]?(?:\d+|\d*\.\d+))(?:([a-z]+)|\s*)$/.exec(normalized);
+  if (!match) {
+    return undefined;
+  }
+
+  const number = Number(match[1]);
+  const unit = match[2] ?? "";
+
+  if (!Number.isFinite(number)) {
+    return undefined;
+  }
+
+  if (unit.length === 0) {
+    return number === 0 ? "0px" : undefined;
+  }
+
+  if (!CSS_LENGTH_UNITS.has(unit)) {
+    return undefined;
+  }
+
+  return `${serializeCssNumber(number)}${unit}`;
+}
+
+function parseCanvasFont(value: string): string | undefined {
+  const trimmed = value.trim();
+
+  if (
+    trimmed.length === 0 ||
+    trimmed.includes(";") ||
+    trimmed.includes("{") ||
+    trimmed.includes("}") ||
+    /\bvar\s*\(/i.test(trimmed)
+  ) {
+    return undefined;
+  }
+
+  const tokens = tokenizeCssWhitespace(trimmed);
+  const sizeIndex = tokens.findIndex((token) => parseFontSizeToken(token) !== undefined);
+
+  if (sizeIndex === -1 || sizeIndex === tokens.length - 1) {
+    return undefined;
+  }
+
+  for (const token of tokens.slice(0, sizeIndex)) {
+    if (!isFontPrefixToken(token)) {
+      return undefined;
+    }
+  }
+
+  const size = parseFontSizeToken(tokens[sizeIndex]);
+  const family = serializeFontFamily(tokens.slice(sizeIndex + 1).join(" "));
+
+  if (!size || !family) {
+    return undefined;
+  }
+
+  const prefix = serializeFontPrefix(tokens.slice(0, sizeIndex));
+  return [...prefix, size, family].join(" ");
+}
+
+function tokenizeCssWhitespace(value: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let quote: "'" | "\"" | undefined;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+
+    if (quote) {
+      current += char;
+      if (char === quote) {
+        quote = undefined;
+      }
+      continue;
+    }
+
+    if (char === "'" || char === "\"") {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current.length > 0) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (quote) {
+    return [];
+  }
+
+  if (current.length > 0) {
+    tokens.push(current);
+  }
+
+  return tokens;
+}
+
+function isFontPrefixToken(token: string): boolean {
+  const normalized = token.toLowerCase();
+
+  return (
+    FONT_STYLE_KEYWORDS.has(normalized) ||
+    FONT_VARIANT_KEYWORDS.has(normalized) ||
+    FONT_WEIGHT_KEYWORDS.has(normalized) ||
+    FONT_STRETCH_KEYWORDS.has(normalized) ||
+    isNumericFontWeight(normalized)
+  );
+}
+
+function parseFontSizeToken(token: string): string | undefined {
+  const [size] = token.split("/");
+  const normalized = size.toLowerCase();
+
+  if (FONT_SIZE_KEYWORDS.has(normalized)) {
+    return normalized;
+  }
+
+  if (normalized.endsWith("%")) {
+    const percentage = Number(normalized.slice(0, -1));
+    return Number.isFinite(percentage) && percentage > 0 ? `${serializeCssNumber(percentage)}%` : undefined;
+  }
+
+  const length = parseCssLength(normalized);
+  if (!length) {
+    return undefined;
+  }
+
+  return length === "0px" ? undefined : length;
+}
+
+function serializeFontPrefix(tokens: readonly string[]): string[] {
+  const serialized: string[] = [];
+  let style = "";
+  let variant = "";
+  let weight = "";
+  let stretch = "";
+
+  for (const token of tokens) {
+    const normalized = token.toLowerCase();
+
+    if (FONT_STYLE_KEYWORDS.has(normalized) && normalized !== "normal") {
+      style = normalized;
+      continue;
+    }
+
+    if (FONT_VARIANT_KEYWORDS.has(normalized) && normalized !== "normal") {
+      variant = normalized;
+      continue;
+    }
+
+    if ((FONT_WEIGHT_KEYWORDS.has(normalized) || isNumericFontWeight(normalized)) && normalized !== "normal" && normalized !== "400") {
+      weight = normalized;
+      continue;
+    }
+
+    if (FONT_STRETCH_KEYWORDS.has(normalized) && normalized !== "normal") {
+      stretch = normalized;
+    }
+  }
+
+  if (style) {
+    serialized.push(style);
+  }
+  if (variant) {
+    serialized.push(variant);
+  }
+  if (weight) {
+    serialized.push(weight);
+  }
+  if (stretch) {
+    serialized.push(stretch);
+  }
+
+  return serialized;
+}
+
+function isNumericFontWeight(value: string): boolean {
+  const weight = Number(value);
+  return Number.isInteger(weight) && weight >= 1 && weight <= 1000;
+}
+
+function serializeFontFamily(value: string): string | undefined {
+  const families = splitCssCommaList(value).map(serializeSingleFontFamily);
+
+  if (families.length === 0 || families.some((family) => family === undefined)) {
+    return undefined;
+  }
+
+  return families.join(", ");
+}
+
+function splitCssCommaList(value: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let quote: "'" | "\"" | undefined;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+
+    if (quote) {
+      current += char;
+      if (char === quote) {
+        quote = undefined;
+      }
+      continue;
+    }
+
+    if (char === "'" || char === "\"") {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === ",") {
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (quote) {
+    return [];
+  }
+
+  parts.push(current.trim());
+  return parts.filter((part) => part.length > 0);
+}
+
+function serializeSingleFontFamily(value: string): string | undefined {
+  const trimmed = value.trim();
+  const quoted = /^(['"])(.*)\1$/.exec(trimmed);
+
+  if (quoted) {
+    const family = quoted[2].replace(/\s+/g, " ").trim();
+    return family.length > 0 ? `"${family.replace(/["\\]/g, "\\$&")}"` : undefined;
+  }
+
+  const normalized = trimmed.replace(/\s+/g, " ");
+  const lower = normalized.toLowerCase();
+
+  if (PROPERTY_WIDE_KEYWORDS.has(lower)) {
+    return undefined;
+  }
+
+  if (GENERIC_FONT_FAMILIES.has(lower)) {
+    return lower;
+  }
+
+  if (!/^[-_a-zA-Z][-_a-zA-Z0-9]*(?: [-_a-zA-Z][-_a-zA-Z0-9]*)*$/.test(normalized)) {
+    return undefined;
+  }
+
+  return `"${normalized}"`;
+}
+
+function serializeCssNumber(value: number): string {
+  if (Object.is(value, -0)) {
+    return "0";
+  }
+
+  return String(value);
 }
 
 function parseColor(value: string): { rgba: Rgba; serialized: string } | undefined {
