@@ -127,6 +127,103 @@ describe("createCanvas", () => {
     expect(ctx.globalCompositeOperation).toBe("xor");
   });
 
+  it("validates line style assignments", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.lineWidth).toBe(1);
+    expect(ctx.lineCap).toBe("butt");
+    expect(ctx.lineJoin).toBe("miter");
+    expect(ctx.miterLimit).toBe(10);
+    expect(ctx.lineDashOffset).toBe(0);
+
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "bevel";
+    ctx.miterLimit = 7.5;
+    ctx.lineDashOffset = -3;
+
+    expect(ctx.lineWidth).toBe(2.5);
+    expect(ctx.lineCap).toBe("round");
+    expect(ctx.lineJoin).toBe("bevel");
+    expect(ctx.miterLimit).toBe(7.5);
+    expect(ctx.lineDashOffset).toBe(-3);
+
+    ctx.lineWidth = 0;
+    ctx.lineWidth = -1;
+    ctx.lineWidth = Number.NaN;
+    ctx.lineWidth = Number.POSITIVE_INFINITY;
+    ctx.lineCap = "ROUND" as CanvasLineCap;
+    ctx.lineCap = "invalid" as CanvasLineCap;
+    ctx.lineJoin = "butt" as CanvasLineJoin;
+    ctx.lineJoin = "invalid" as CanvasLineJoin;
+    ctx.miterLimit = 0;
+    ctx.miterLimit = -1;
+    ctx.miterLimit = Number.NaN;
+    ctx.miterLimit = Number.NEGATIVE_INFINITY;
+    ctx.lineDashOffset = Number.NaN;
+    ctx.lineDashOffset = Number.POSITIVE_INFINITY;
+
+    expect(ctx.lineWidth).toBe(2.5);
+    expect(ctx.lineCap).toBe("round");
+    expect(ctx.lineJoin).toBe("bevel");
+    expect(ctx.miterLimit).toBe(7.5);
+    expect(ctx.lineDashOffset).toBe(-3);
+  });
+
+  it("normalizes and protects the line dash list", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.getLineDash()).toEqual([]);
+
+    ctx.setLineDash([1, 2, 3]);
+    expect(ctx.getLineDash()).toEqual([1, 2, 3, 1, 2, 3]);
+
+    const dash = ctx.getLineDash();
+    dash[0] = 99;
+    expect(ctx.getLineDash()).toEqual([1, 2, 3, 1, 2, 3]);
+
+    ctx.setLineDash([4, 0]);
+    expect(ctx.getLineDash()).toEqual([4, 0]);
+
+    ctx.setLineDash([5, Number.NaN]);
+    ctx.setLineDash([5, Number.POSITIVE_INFINITY]);
+    ctx.setLineDash([5, -1]);
+    expect(ctx.getLineDash()).toEqual([4, 0]);
+
+    ctx.setLineDash([]);
+    expect(ctx.getLineDash()).toEqual([]);
+  });
+
+  it("saves and restores line style state", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.lineWidth = 4;
+    ctx.lineCap = "square";
+    ctx.lineJoin = "round";
+    ctx.miterLimit = 3;
+    ctx.setLineDash([2, 1]);
+    ctx.lineDashOffset = 5;
+    ctx.save();
+
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "bevel";
+    ctx.miterLimit = 9;
+    ctx.setLineDash([7, 3]);
+    ctx.lineDashOffset = -2;
+    ctx.restore();
+
+    expect(ctx.lineWidth).toBe(4);
+    expect(ctx.lineCap).toBe("square");
+    expect(ctx.lineJoin).toBe("round");
+    expect(ctx.miterLimit).toBe(3);
+    expect(ctx.getLineDash()).toEqual([2, 1]);
+    expect(ctx.lineDashOffset).toBe(5);
+  });
+
   it("applies globalAlpha to filled rectangles", async () => {
     const canvas = await createTestCanvas(2, 2);
     const ctx = canvas.getContext("2d");

@@ -26,6 +26,48 @@ export interface Canvas2DContext {
   globalCompositeOperation: string;
 
   /**
+   * Width of lines drawn by stroke operations.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linewidth-dev
+   */
+  lineWidth: number;
+
+  /**
+   * Shape used at the ends of open subpaths when stroked.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linecap-dev
+   */
+  lineCap: CanvasLineCap;
+
+  /**
+   * Shape used where two line segments meet when stroked.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linejoin-dev
+   */
+  lineJoin: CanvasLineJoin;
+
+  /**
+   * Miter length limit for stroked joins.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-miterlimit-dev
+   */
+  miterLimit: number;
+
+  /**
+   * Offset into the current line dash pattern.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linedashoffset-dev
+   */
+  lineDashOffset: number;
+
+  /**
+   * Replaces the current line dash pattern.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-setlinedash-dev
+   */
+  setLineDash(segments: readonly number[]): void;
+
+  /**
+   * Returns a copy of the current line dash pattern.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-getlinedash-dev
+   */
+  getLineDash(): number[];
+
+  /**
    * Returns the live RGBA backing pixels for encoding and diagnostics.
    * This is a deliberate package extension, not part of the web Canvas API.
    */
@@ -253,6 +295,8 @@ const GLOBAL_COMPOSITE_OPERATIONS = new Set<string>([
   "color",
   "luminosity"
 ]);
+const CANVAS_LINE_CAPS = new Set<string>(["butt", "round", "square"]);
+const CANVAS_LINE_JOINS = new Set<string>(["round", "bevel", "miter"]);
 
 export class CanvasPath2D {
   readonly #commands: PathCommand[] = [];
@@ -486,15 +530,15 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #lineDash: number[] = [];
   #globalAlpha = 1;
   #globalCompositeOperation: GlobalCompositeOperation = "source-over";
+  #lineWidth = 1;
+  #lineCap: CanvasLineCap = "butt";
+  #lineJoin: CanvasLineJoin = "miter";
+  #miterLimit = 10;
+  #lineDashOffset = 0;
   strokeStyle = "#000000";
   fillRule: CanvasFillRule = "nonzero";
-  lineWidth = 1;
-  lineCap: CanvasLineCap = "butt";
-  lineJoin: CanvasLineJoin = "miter";
-  miterLimit = 10;
   font = "10px sans-serif";
   filter = "none";
-  lineDashOffset = 0;
   imageSmoothingEnabled = true;
 
   constructor(readonly canvas: Canvas) {}
@@ -544,6 +588,72 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
 
     this.#globalCompositeOperation = operation as GlobalCompositeOperation;
+  }
+
+  get lineWidth(): number {
+    return this.#lineWidth;
+  }
+
+  set lineWidth(value: number) {
+    const width = Number(value);
+
+    if (!Number.isFinite(width) || width <= 0) {
+      return;
+    }
+
+    this.#lineWidth = width;
+  }
+
+  get lineCap(): CanvasLineCap {
+    return this.#lineCap;
+  }
+
+  set lineCap(value: CanvasLineCap) {
+    if (!isCanvasLineCap(value)) {
+      return;
+    }
+
+    this.#lineCap = value;
+  }
+
+  get lineJoin(): CanvasLineJoin {
+    return this.#lineJoin;
+  }
+
+  set lineJoin(value: CanvasLineJoin) {
+    if (!isCanvasLineJoin(value)) {
+      return;
+    }
+
+    this.#lineJoin = value;
+  }
+
+  get miterLimit(): number {
+    return this.#miterLimit;
+  }
+
+  set miterLimit(value: number) {
+    const limit = Number(value);
+
+    if (!Number.isFinite(limit) || limit <= 0) {
+      return;
+    }
+
+    this.#miterLimit = limit;
+  }
+
+  get lineDashOffset(): number {
+    return this.#lineDashOffset;
+  }
+
+  set lineDashOffset(value: number) {
+    const offset = Number(value);
+
+    if (!Number.isFinite(offset)) {
+      return;
+    }
+
+    this.#lineDashOffset = offset;
   }
 
   save(): void {
@@ -723,7 +833,13 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   }
 
   setLineDash(segments: readonly number[]): void {
-    this.#lineDash = [...segments];
+    const dash = Array.from(segments, Number);
+
+    if (dash.some((segment) => !Number.isFinite(segment) || segment < 0)) {
+      return;
+    }
+
+    this.#lineDash = dash.length % 2 === 1 ? [...dash, ...dash] : dash;
   }
 
   getLineDash(): number[] {
@@ -1134,6 +1250,14 @@ function matrixFromObject(matrix: CanvasTransformMatrix | Matrix2D): Matrix2D {
   }
 
   return matrix;
+}
+
+function isCanvasLineCap(value: unknown): value is CanvasLineCap {
+  return typeof value === "string" && CANVAS_LINE_CAPS.has(value);
+}
+
+function isCanvasLineJoin(value: unknown): value is CanvasLineJoin {
+  return typeof value === "string" && CANVAS_LINE_JOINS.has(value);
 }
 
 function parseColor(value: string): { rgba: Rgba; serialized: string } | undefined {

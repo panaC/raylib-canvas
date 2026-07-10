@@ -38,6 +38,15 @@ html/canvas/element/compositing/2d.composite.solid.source-over.html
 html/canvas/element/compositing/2d.composite.solid.xor.html
 html/canvas/element/fill-and-stroke-styles/2d.fillStyle.parse.hex3.html
 html/canvas/element/fill-and-stroke-styles/2d.fillStyle.parse.invalid.name-1.html
+html/canvas/element/line-styles/2d.line.defaults.html
+html/canvas/element/line-styles/2d.line.width.valid.html
+html/canvas/element/line-styles/2d.line.width.invalid.html
+html/canvas/element/line-styles/2d.line.cap.valid.html
+html/canvas/element/line-styles/2d.line.cap.invalid.html
+html/canvas/element/line-styles/2d.line.join.valid.html
+html/canvas/element/line-styles/2d.line.join.invalid.html
+html/canvas/element/line-styles/2d.line.miter.valid.html
+html/canvas/element/line-styles/2d.line.miter.invalid.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.basic.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.source.outside.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.source.negative.html

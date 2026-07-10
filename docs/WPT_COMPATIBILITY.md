@@ -56,6 +56,11 @@ covers official upstream files for:
   invalid assignment behavior, and solid filled rectangle rendering for core
   Porter-Duff modes plus `lighter` and `clear`
 - `fillStyle` hex parsing and invalid-name retention
+- line style defaults and valid/invalid assignment behavior for `lineWidth`,
+  `lineCap`, `lineJoin`, and `miterLimit`
+- line dash state behavior is covered by unit tests; the current upstream
+  `setLineDash()` WPT also requires `strokeRect()` rendering, which is not part
+  of the smoke suite yet
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
   errors, negative-size reads, and non-finite argument errors
 - `getTransform()` identity, scale, rotate, translate, reset, and DOMMatrix
