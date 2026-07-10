@@ -175,6 +175,64 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 2, 2)).toEqual([0, 0, 0, 0]);
   });
 
+  it("adds scale factors to the current transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.scale(2, 3);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(2);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(3);
+    expect(transform.e).toBe(0);
+    expect(transform.f).toBe(0);
+  });
+
+  it("post-multiplies scale with the existing transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(5, 7);
+    ctx.scale(2, 3);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(2);
+    expect(transform.d).toBe(3);
+    expect(transform.e).toBe(5);
+    expect(transform.f).toBe(7);
+  });
+
+  it("ignores non-finite scale factors", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    ctx.scale(Number.NaN, 1);
+    ctx.scale(1, Number.POSITIVE_INFINITY);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(2);
+    expect(transform.f).toBe(3);
+  });
+
+  it("applies scale to filled rectangle rendering", async () => {
+    const canvas = await createTestCanvas(8, 8);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.scale(2, 3);
+    ctx.fillRect(1, 1, 2, 1);
+
+    expect(pixelAt(ctx, 1, 3)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 2, 3)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 5, 5)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 6, 5)).toEqual([0, 0, 0, 0]);
+  });
+
   it("clips cleared rectangles to the canvas bounds", async () => {
     const canvas = await createTestCanvas(4, 4);
     const ctx = canvas.getContext("2d");

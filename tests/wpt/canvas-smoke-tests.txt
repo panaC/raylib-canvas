@@ -16,3 +16,9 @@ html/canvas/element/pixel-manipulation/2d.imageData.get.source.outside.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.source.negative.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.zero.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.nonfinite.html
+html/canvas/element/transformations/2d.transformation.scale.basic.html
+html/canvas/element/transformations/2d.transformation.scale.large.html
+html/canvas/element/transformations/2d.transformation.scale.multiple.html
+html/canvas/element/transformations/2d.transformation.scale.negative.html
+html/canvas/element/transformations/2d.transformation.scale.nonfinite.html
+html/canvas/element/transformations/2d.transformation.scale.zero.html

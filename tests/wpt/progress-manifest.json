@@ -34,7 +34,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/transformations/",
-      "reason": "Canvas transform state is not implemented yet."
+      "reason": "Only scale(), translate(), transform(), setTransform(), resetTransform(), and getTransform() basics exist; rotate() and broader transform edge cases are not implemented yet."
     },
     {
       "status": "blocked",

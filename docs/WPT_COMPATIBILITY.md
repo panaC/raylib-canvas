@@ -52,6 +52,7 @@ covers official upstream files for:
 - `fillStyle` hex parsing and invalid-name retention
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
   errors, negative-size reads, and non-finite argument errors
+- `scale()` basic, large, repeated, negative, zero, and non-finite transforms
 
 Run the full upstream Canvas tree with:
 
