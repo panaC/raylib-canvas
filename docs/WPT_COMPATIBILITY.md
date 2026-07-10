@@ -53,6 +53,7 @@ covers official upstream files for:
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
   errors, negative-size reads, and non-finite argument errors
 - `scale()` basic, large, repeated, negative, zero, and non-finite transforms
+- `rotate()` direction, radians, wraparound, zero, and non-finite transforms
 
 Run the full upstream Canvas tree with:
 

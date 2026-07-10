@@ -162,6 +162,69 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 1, 1)).toEqual([0, 128, 0, 255]);
   });
 
+  it("adds rotation to the current transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.rotate(Math.PI / 2);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBeCloseTo(0);
+    expect(transform.b).toBeCloseTo(1);
+    expect(transform.c).toBeCloseTo(-1);
+    expect(transform.d).toBeCloseTo(0);
+    expect(transform.e).toBe(0);
+    expect(transform.f).toBe(0);
+  });
+
+  it("post-multiplies rotation with the existing transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(5, 7);
+    ctx.rotate(Math.PI / 2);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBeCloseTo(0);
+    expect(transform.b).toBeCloseTo(1);
+    expect(transform.c).toBeCloseTo(-1);
+    expect(transform.d).toBeCloseTo(0);
+    expect(transform.e).toBe(5);
+    expect(transform.f).toBe(7);
+  });
+
+  it("ignores non-finite rotation angles", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    ctx.rotate(Number.NaN);
+    ctx.rotate(Number.POSITIVE_INFINITY);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(2);
+    expect(transform.f).toBe(3);
+  });
+
+  it("applies rotation to filled rectangle rendering", async () => {
+    const canvas = await createTestCanvas(6, 6);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.translate(3, 1);
+    ctx.rotate(Math.PI / 2);
+    ctx.fillRect(0, 0, 2, 2);
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 2, 2)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 3, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 1, 3)).toEqual([0, 0, 0, 0]);
+  });
+
   it("clears pixels to transparent black", async () => {
     const canvas = await createTestCanvas(4, 4);
     const ctx = canvas.getContext("2d");

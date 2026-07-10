@@ -110,6 +110,12 @@ export interface Canvas2DContext {
   getTransform(): CanvasTransformMatrix;
 
   /**
+   * Adds a rotation to the current transform matrix.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-rotate-dev
+   */
+  rotate(angle: number): void;
+
+  /**
    * Adds a scale to the current transform matrix.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-scale-dev
    */
@@ -511,6 +517,16 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
   getTransform(): CanvasTransformMatrix {
     return new CanvasTransformMatrix(this.#transform);
+  }
+
+  rotate(angle: number): void {
+    if (!Number.isFinite(angle)) {
+      return;
+    }
+
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+    this.transform(cos, sin, -sin, cos, 0, 0);
   }
 
   scale(x: number, y: number): void {

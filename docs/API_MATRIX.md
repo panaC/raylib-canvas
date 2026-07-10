@@ -31,7 +31,7 @@
 | `save()` | [WHATWG save](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-save-dev) | waiting |
 | `restore()` | [WHATWG restore](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-restore-dev) | waiting |
 | `scale(x, y)` | [WHATWG scale](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-scale-dev) | done |
-| `rotate(angle)` | [WHATWG rotate](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-rotate-dev) | waiting |
+| `rotate(angle)` | [WHATWG rotate](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-rotate-dev) | done |
 | `translate(x, y)` | [WHATWG translate](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-translate-dev) | waiting |
 | `transform(a, b, c, d, e, f)` | [WHATWG transform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-transform-dev) | waiting |
 | `getTransform()` | [WHATWG getTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-gettransform-dev) | waiting |
