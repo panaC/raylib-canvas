@@ -249,6 +249,27 @@ export interface Canvas2DContext {
   stroke(path?: CanvasPath2D): void;
 
   /**
+   * Intersects the current clipping region with the current path or supplied path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-clip-dev
+   */
+  clip(fillRule?: CanvasFillRule): void;
+  clip(path?: CanvasPath2D, fillRule?: CanvasFillRule): void;
+
+  /**
+   * Returns whether a point is inside the current path or supplied path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ispointinpath-dev
+   */
+  isPointInPath(x: number, y: number, fillRule?: CanvasFillRule): boolean;
+  isPointInPath(path: CanvasPath2D, x: number, y: number, fillRule?: CanvasFillRule): boolean;
+
+  /**
+   * Returns whether a point is inside the stroke outline of the current path or supplied path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ispointinstroke-dev
+   */
+  isPointInStroke(x: number, y: number): boolean;
+  isPointInStroke(path: CanvasPath2D, x: number, y: number): boolean;
+
+  /**
    * Strokes text using the current stroke style.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroketext-dev
    */
@@ -548,6 +569,7 @@ type CanvasState = {
   readonly shadowRgba: Rgba;
   readonly lineDash: readonly number[];
   readonly lineDashOffset: number;
+  readonly clipMask?: Uint8Array;
 };
 
 type CanvasGradientDefinition =
@@ -767,6 +789,9 @@ export class CanvasPath2D {
   }
 
   moveTo(x: number, y: number): void {
+    x = Number(x);
+    y = Number(y);
+
     if (![x, y].every(Number.isFinite)) {
       return;
     }
@@ -775,6 +800,9 @@ export class CanvasPath2D {
   }
 
   lineTo(x: number, y: number): void {
+    x = Number(x);
+    y = Number(y);
+
     if (![x, y].every(Number.isFinite)) {
       return;
     }
@@ -783,6 +811,13 @@ export class CanvasPath2D {
   }
 
   bezierCurveTo(cp1x: number, cp1y: number, cp2x: number, cp2y: number, x: number, y: number): void {
+    cp1x = Number(cp1x);
+    cp1y = Number(cp1y);
+    cp2x = Number(cp2x);
+    cp2y = Number(cp2y);
+    x = Number(x);
+    y = Number(y);
+
     if (![cp1x, cp1y, cp2x, cp2y, x, y].every(Number.isFinite)) {
       return;
     }
@@ -791,6 +826,11 @@ export class CanvasPath2D {
   }
 
   quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void {
+    cpx = Number(cpx);
+    cpy = Number(cpy);
+    x = Number(x);
+    y = Number(y);
+
     if (![cpx, cpy, x, y].every(Number.isFinite)) {
       return;
     }
@@ -799,6 +839,11 @@ export class CanvasPath2D {
   }
 
   rect(x: number, y: number, width: number, height: number): void {
+    x = Number(x);
+    y = Number(y);
+    width = Number(width);
+    height = Number(height);
+
     if (![x, y, width, height].every(Number.isFinite)) {
       return;
     }
@@ -820,12 +865,20 @@ export class CanvasPath2D {
     endAngle: number,
     counterclockwise = false
   ): void {
-    if (radiusX < 0 || radiusY < 0) {
-      throw createIndexSizeError("The radius provided is negative.");
-    }
+    x = Number(x);
+    y = Number(y);
+    radiusX = Number(radiusX);
+    radiusY = Number(radiusY);
+    rotation = Number(rotation);
+    startAngle = Number(startAngle);
+    endAngle = Number(endAngle);
 
     if (![x, y, radiusX, radiusY, rotation, startAngle, endAngle].every(Number.isFinite)) {
       return;
+    }
+
+    if (radiusX < 0 || radiusY < 0) {
+      throw createIndexSizeError("The radius provided is negative.");
     }
 
     this.#commands.push({
@@ -842,15 +895,27 @@ export class CanvasPath2D {
   }
 
   arcTo(x1: number, y1: number, x2: number, y2: number, radius: number): void {
-    if (radius < 0) {
-      throw createIndexSizeError("The radius provided is negative.");
-    }
+    x1 = Number(x1);
+    y1 = Number(y1);
+    x2 = Number(x2);
+    y2 = Number(y2);
+    radius = Number(radius);
 
     if (![x1, y1, x2, y2, radius].every(Number.isFinite)) {
       return;
     }
 
-    const current = currentPathPoint(this.#commands) ?? { x: 0, y: 0 };
+    if (radius < 0) {
+      throw createIndexSizeError("The radius provided is negative.");
+    }
+
+    const current = currentPathPoint(this.#commands);
+
+    if (!current) {
+      this.moveTo(x1, y1);
+      return;
+    }
+
     const tangent = arcToSegments(current, { x: x1, y: y1 }, { x: x2, y: y2 }, radius);
 
     if (!tangent) {
@@ -873,11 +938,20 @@ export class CanvasPath2D {
   }
 
   roundRect(x: number, y: number, width: number, height: number, radii: number | DOMPointInit | Array<number | DOMPointInit> = 0): void {
+    x = Number(x);
+    y = Number(y);
+    width = Number(width);
+    height = Number(height);
+
     if (![x, y, width, height].every(Number.isFinite)) {
       return;
     }
 
     const corners = normalizeRoundRectRadii(radii);
+    if (!corners) {
+      return;
+    }
+
     const scale = Math.min(
       1,
       Math.abs(width) / Math.max(corners[0].x + corners[1].x, corners[3].x + corners[2].x, 1),
@@ -1272,6 +1346,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #shadowRgba: Rgba = [0, 0, 0, 0];
   #imageSmoothingEnabled = true;
   #imageSmoothingQuality: CanvasImageSmoothingQuality = "low";
+  #clipMask: Uint8Array | undefined;
   fillRule: CanvasFillRule = "nonzero";
 
   constructor(readonly canvas: Canvas) {}
@@ -1690,7 +1765,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       shadowColor: this.shadowColor,
       shadowRgba: this.#shadowRgba,
       lineDash: [...this.#lineDash],
-      lineDashOffset: this.lineDashOffset
+      lineDashOffset: this.lineDashOffset,
+      clipMask: this.#clipMask ? new Uint8Array(this.#clipMask) : undefined
     });
   }
 
@@ -1734,6 +1810,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#shadowRgba = state.shadowRgba;
     this.#lineDash = [...state.lineDash];
     this.lineDashOffset = state.lineDashOffset;
+    this.#clipMask = state.clipMask ? new Uint8Array(state.clipMask) : undefined;
   }
 
   clearRect(x: number, y: number, width: number, height: number): void {
@@ -1760,7 +1837,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   fill(path?: CanvasPath2D, fillRule?: CanvasFillRule): void;
   fill(pathOrRule: CanvasPath2D | CanvasFillRule = this.#currentPath, fillRule: CanvasFillRule = this.fillRule): void {
     const path = typeof pathOrRule === "string" ? this.#currentPath : pathOrRule;
-    const rule = typeof pathOrRule === "string" ? pathOrRule : fillRule;
+    const rule = normalizeCanvasFillRule(typeof pathOrRule === "string" ? pathOrRule : fillRule);
 
     this.#drawShadowFill(path, rule);
     fillPolygons(
@@ -1777,6 +1854,82 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   stroke(path: CanvasPath2D = this.#currentPath): void {
     this.#drawShadowStroke(path);
     this.#strokePath(path);
+  }
+
+  clip(fillRule?: CanvasFillRule): void;
+  clip(path?: CanvasPath2D, fillRule?: CanvasFillRule): void;
+  clip(pathOrRule: CanvasPath2D | CanvasFillRule = this.#currentPath, fillRule: CanvasFillRule = this.fillRule): void {
+    const path = typeof pathOrRule === "string" ? this.#currentPath : pathOrRule;
+    const rule = normalizeCanvasFillRule(typeof pathOrRule === "string" ? pathOrRule : fillRule);
+    const nextMask = rasterizeClipMask(
+      this.canvas.width,
+      this.canvas.height,
+      pathToPolygons(path, this.#transform),
+      rule,
+      this.#clipMask
+    );
+
+    this.#clipMask = nextMask;
+  }
+
+  isPointInPath(x: number, y: number, fillRule?: CanvasFillRule): boolean;
+  isPointInPath(path: CanvasPath2D, x: number, y: number, fillRule?: CanvasFillRule): boolean;
+  isPointInPath(pathOrX: CanvasPath2D | number, xOrY: number, yOrFillRule?: number | CanvasFillRule, maybeFillRule?: CanvasFillRule): boolean {
+    const hasPath = pathOrX instanceof CanvasPath2D;
+
+    if (!hasPath && (pathOrX === undefined || pathOrX === null || typeof pathOrX === "object")) {
+      throw new TypeError("isPointInPath() requires a Path2D object or point coordinates.");
+    }
+
+    const path = hasPath ? pathOrX : this.#currentPath;
+    const x = Number(hasPath ? xOrY : pathOrX);
+    const y = Number(hasPath ? yOrFillRule : xOrY);
+    const fillRule = (hasPath ? maybeFillRule : yOrFillRule) as CanvasFillRule | undefined;
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return false;
+    }
+
+    const point = inverseTransformPoint(this.#transform, x, y);
+    return point
+      ? isPointInPolygons(
+          point.x,
+          point.y,
+          pathToPolygons(path, IDENTITY_MATRIX),
+          normalizeCanvasFillRule(fillRule === undefined ? this.fillRule : fillRule)
+        )
+      : false;
+  }
+
+  isPointInStroke(x: number, y: number): boolean;
+  isPointInStroke(path: CanvasPath2D, x: number, y: number): boolean;
+  isPointInStroke(pathOrX: CanvasPath2D | number, xOrY: number, maybeY?: number): boolean {
+    const hasPath = pathOrX instanceof CanvasPath2D;
+
+    if (!hasPath && (pathOrX === undefined || pathOrX === null || typeof pathOrX === "object")) {
+      throw new TypeError("isPointInStroke() requires a Path2D object or point coordinates.");
+    }
+
+    const path = hasPath ? pathOrX : this.#currentPath;
+    const x = Number(hasPath ? xOrY : pathOrX);
+    const y = Number(hasPath ? maybeY : xOrY);
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return false;
+    }
+
+    const point = inverseTransformPoint(this.#transform, x, y);
+    if (!point) {
+      return false;
+    }
+
+    return isPointInStrokePath(point, path, IDENTITY_MATRIX, {
+      lineWidth: this.#lineWidth,
+      lineCap: this.#lineCap,
+      lineJoin: this.#lineJoin,
+      lineDash: this.#lineDash,
+      lineDashOffset: this.#lineDashOffset
+    });
   }
 
   strokeText(text: unknown, x: number, y: number, maxWidth?: number): void {
@@ -2156,6 +2309,10 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
     for (let y = bounds.top; y < bounds.bottom; y += 1) {
       for (let x = bounds.left; x < bounds.right; x += 1) {
+        if (!this.#isPixelInClip(x, y)) {
+          continue;
+        }
+
         const userPoint = transformPoint(matrixFromObject(inverseTransform), x + 0.5, y + 0.5);
 
         if (
@@ -2182,25 +2339,32 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
   }
 
-  clip(_path?: CanvasPath2D, _fillRule?: CanvasFillRule): void {
-    // Clipping is not implemented yet; pdf.js calls this only for clipped paths.
-  }
-
   #clearTransformedRect(x: number, y: number, width: number, height: number): void {
     if (![x, y, width, height].every(Number.isFinite)) {
       return;
     }
 
-    if (isIdentityMatrix(this.#transform)) {
+    if (isIdentityMatrix(this.#transform) && !this.#clipMask) {
       this.fillRectPixels(x, y, width, height, TRANSPARENT_BLACK);
+      return;
+    }
+
+    if (isIdentityMatrix(this.#transform)) {
+      this.#clearRectPixels(x, y, width, height);
       return;
     }
 
     const path = new CanvasPath2D();
     path.rect(x, y, width, height);
-    for (const polygon of pathToPolygons(path, this.#transform)) {
-      clearPolygon(this.getPixels(), this.canvas.width, this.canvas.height, polygon);
-    }
+    fillPolygons(
+      this.getPixels(),
+      this.canvas.width,
+      this.canvas.height,
+      pathToPolygons(path, this.#transform),
+      this.#clearPaint(),
+      "clear",
+      this.fillRule
+    );
   }
 
   #fillTransformedRect(x: number, y: number, width: number, height: number, paint: Paint): void {
@@ -2245,6 +2409,30 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
   }
 
+  #clearRectPixels(x: number, y: number, width: number, height: number): void {
+    const x2 = x + width;
+    const y2 = y + height;
+    const left = clamp(Math.trunc(Math.min(x, x2)), 0, this.canvas.width);
+    const top = clamp(Math.trunc(Math.min(y, y2)), 0, this.canvas.height);
+    const right = clamp(Math.trunc(Math.max(x, x2)), 0, this.canvas.width);
+    const bottom = clamp(Math.trunc(Math.max(y, y2)), 0, this.canvas.height);
+    const pixels = this.getPixels();
+
+    for (let py = top; py < bottom; py += 1) {
+      for (let px = left; px < right; px += 1) {
+        if (!this.#isPixelInClip(px, py)) {
+          continue;
+        }
+
+        const offset = (py * this.canvas.width + px) * 4;
+        pixels[offset] = 0;
+        pixels[offset + 1] = 0;
+        pixels[offset + 2] = 0;
+        pixels[offset + 3] = 0;
+      }
+    }
+  }
+
   #strokePath(path: CanvasPath2D): void {
     strokePath(
       this.getPixels(),
@@ -2270,6 +2458,10 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     const alpha = this.#globalAlpha * this.#filterOpacity;
     return {
       sample: (x, y) => {
+        if (!this.#isPixelInClip(Math.floor(x), Math.floor(y))) {
+          return TRANSPARENT_BLACK;
+        }
+
         const userPoint =
           Number.isFinite(inverseTransform.a) && Number.isFinite(inverseTransform.d)
             ? transformPoint(matrixFromObject(inverseTransform), x, y)
@@ -2282,8 +2474,18 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #shadowPaint(): Paint {
     const color = applyAlpha(this.#shadowRgba, this.#globalAlpha);
     return {
-      sample: () => color
+      sample: (x, y) => (this.#isPixelInClip(Math.floor(x), Math.floor(y)) ? color : TRANSPARENT_BLACK)
     };
+  }
+
+  #clearPaint(): Paint {
+    return {
+      sample: (x, y) => (this.#isPixelInClip(Math.floor(x), Math.floor(y)) ? [0, 0, 0, 255] : TRANSPARENT_BLACK)
+    };
+  }
+
+  #isPixelInClip(x: number, y: number): boolean {
+    return !this.#clipMask || this.#clipMask[y * this.canvas.width + x] === 1;
   }
 
   #hasVisibleShadow(): boolean {
@@ -2395,10 +2597,13 @@ function pathToPolygons(path: CanvasPath2D, transform: Matrix2D): Point[][] {
     }
 
     if (command.type === "bezierCurveTo") {
-      const from = lastPoint ?? transformPoint(transform, 0, 0);
       const cp1 = transformPoint(transform, command.cp1x, command.cp1y);
       const cp2 = transformPoint(transform, command.cp2x, command.cp2y);
       const to = transformPoint(transform, command.x, command.y);
+      const from = lastPoint ?? cp1;
+      if (!start) {
+        current = [from];
+      }
       appendCubicBezier(current, from, cp1, cp2, to);
       start ??= from;
       lastPoint = to;
@@ -2406,9 +2611,9 @@ function pathToPolygons(path: CanvasPath2D, transform: Matrix2D): Point[][] {
     }
 
     if (command.type === "quadraticCurveTo") {
-      const from = lastPoint ?? transformPoint(transform, 0, 0);
       const cp = transformPoint(transform, command.cpx, command.cpy);
       const to = transformPoint(transform, command.x, command.y);
+      const from = lastPoint ?? cp;
       if (!start) {
         current = [from];
       }
@@ -2442,14 +2647,18 @@ function pathToPolygons(path: CanvasPath2D, transform: Matrix2D): Point[][] {
       const rightBottom = transformPoint(transform, command.x + command.width, command.y + command.height);
       const leftBottom = transformPoint(transform, command.x, command.y + command.height);
       polygons.push([leftTop, rightTop, rightBottom, leftBottom]);
-      lastPoint = undefined;
+      current = [leftTop];
+      start = leftTop;
+      lastPoint = leftTop;
       continue;
     }
 
     if (start) {
-      current.push(start);
+      if (current.length > 0 && !samePoint(current[current.length - 1], start)) {
+        current.push(start);
+      }
+      lastPoint = start;
     }
-    closeCurrent();
   }
 
   closeCurrent();
@@ -2503,12 +2712,12 @@ function pathToStrokeSubpaths(path: CanvasPath2D, transform: Matrix2D): StrokeSu
     }
 
     if (command.type === "bezierCurveTo") {
-      const from = lastPoint ?? transformPoint(transform, 0, 0);
+      const cp1 = transformPoint(transform, command.cp1x, command.cp1y);
+      const from = lastPoint ?? cp1;
       if (!start) {
         start = from;
         current = [from];
       }
-      const cp1 = transformPoint(transform, command.cp1x, command.cp1y);
       const cp2 = transformPoint(transform, command.cp2x, command.cp2y);
       const to = transformPoint(transform, command.x, command.y);
       appendCubicBezier(current, from, cp1, cp2, to);
@@ -2517,12 +2726,12 @@ function pathToStrokeSubpaths(path: CanvasPath2D, transform: Matrix2D): StrokeSu
     }
 
     if (command.type === "quadraticCurveTo") {
-      const from = lastPoint ?? transformPoint(transform, 0, 0);
+      const cp = transformPoint(transform, command.cpx, command.cpy);
+      const from = lastPoint ?? cp;
       if (!start) {
         start = from;
         current = [from];
       }
-      const cp = transformPoint(transform, command.cpx, command.cpy);
       const to = transformPoint(transform, command.x, command.y);
       appendQuadraticBezier(current, from, cp, to);
       lastPoint = to;
@@ -2553,11 +2762,18 @@ function pathToStrokeSubpaths(path: CanvasPath2D, transform: Matrix2D): StrokeSu
       const rightBottom = transformPoint(transform, command.x + command.width, command.y + command.height);
       const leftBottom = transformPoint(transform, command.x, command.y + command.height);
       subpaths.push({ points: [leftTop, rightTop, rightBottom, leftBottom], closed: true });
+      current = [leftTop];
+      start = leftTop;
+      lastPoint = leftTop;
       continue;
     }
 
     if (start) {
+      const closedStart = start;
       finishClosed();
+      current = [closedStart];
+      start = closedStart;
+      lastPoint = closedStart;
     } else {
       finishOpen();
     }
@@ -2584,6 +2800,76 @@ function strokePath(
   for (const subpath of pathToStrokeSubpaths(path, transform)) {
     strokeSubpath(pixels, width, height, subpath, options, radius);
   }
+}
+
+function isPointInStrokePath(
+  point: Point,
+  path: CanvasPath2D,
+  transform: Matrix2D,
+  options: {
+    readonly lineWidth: number;
+    readonly lineCap: CanvasLineCap;
+    readonly lineJoin: CanvasLineJoin;
+    readonly lineDash: readonly number[];
+    readonly lineDashOffset: number;
+  }
+): boolean {
+  if (options.lineWidth <= 0) {
+    return false;
+  }
+
+  const radius = options.lineWidth / 2;
+
+  for (const subpath of pathToStrokeSubpaths(path, transform)) {
+    const segments = strokeSegments(subpath);
+    const dash = normalizedDash(options.lineDash);
+    const dashTotal = dash.reduce((total, segment) => total + segment, 0);
+    const cumulativeLengths: number[] = [];
+    let pathLength = 0;
+
+    for (const segment of segments) {
+      cumulativeLengths.push(pathLength);
+      pathLength += segment.length;
+    }
+
+    for (let index = 0; index < segments.length; index += 1) {
+      const segment = segments[index];
+      if (segment.length === 0) {
+        continue;
+      }
+
+      const distance = distanceToStrokedSegment(
+        point,
+        segment,
+        radius,
+        subpath.closed,
+        index === 0,
+        index === segments.length - 1,
+        options.lineCap
+      );
+
+      if (distance > radius) {
+        continue;
+      }
+
+      const t = segmentProjection(point, segment);
+      const clampedT = clamp(t, 0, 1);
+      const distanceAlongPath = cumulativeLengths[index] + clampedT * segment.length;
+
+      if (dashTotal === 0 || isDashVisible(distanceAlongPath, dash, dashTotal, options.lineDashOffset)) {
+        return true;
+      }
+    }
+
+    if (
+      options.lineJoin === "round" &&
+      hitsRoundJoin(point, subpath, radius, dash, dashTotal, options.lineDashOffset, pathLength)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function strokeSubpath(
@@ -2653,7 +2939,7 @@ function strokeSubpath(
         break;
       }
 
-      if (!hit && options.lineJoin === "round") {
+      if (!hit) {
         hit = hitsRoundJoin(point, subpath, radius, dash, dashTotal, options.lineDashOffset, pathLength);
       }
 
@@ -2899,8 +3185,7 @@ function fillPolygons(
     for (let x = left; x < right; x += 1) {
       const pointX = x + 0.5;
       const pointY = y + 0.5;
-      const winding = polygons.reduce((total, polygon) => total + windingNumber(pointX, pointY, polygon), 0);
-      const hit = fillRule === "evenodd" ? Math.abs(winding) % 2 === 1 : winding !== 0;
+      const hit = isPointInPolygons(pointX, pointY, polygons, fillRule);
 
       if (hit) {
         const color = paint.sample(x + 0.5, y + 0.5);
@@ -2910,6 +3195,56 @@ function fillPolygons(
       }
     }
   }
+}
+
+function rasterizeClipMask(
+  width: number,
+  height: number,
+  polygons: readonly Point[][],
+  fillRule: CanvasFillRule,
+  previousMask?: Uint8Array
+): Uint8Array {
+  const mask = new Uint8Array(width * height);
+
+  if (polygons.length === 0) {
+    return mask;
+  }
+
+  const xs = polygons.flatMap((polygon) => polygon.map((point) => point.x));
+  const ys = polygons.flatMap((polygon) => polygon.map((point) => point.y));
+  const left = clamp(Math.floor(Math.min(...xs)), 0, width);
+  const right = clamp(Math.ceil(Math.max(...xs)), 0, width);
+  const top = clamp(Math.floor(Math.min(...ys)), 0, height);
+  const bottom = clamp(Math.ceil(Math.max(...ys)), 0, height);
+
+  for (let y = top; y < bottom; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      const offset = y * width + x;
+
+      if (previousMask && previousMask[offset] !== 1) {
+        continue;
+      }
+
+      if (isPointInPolygons(x + 0.5, y + 0.5, polygons, fillRule)) {
+        mask[offset] = 1;
+      }
+    }
+  }
+
+  return mask;
+}
+
+function isPointInPolygons(x: number, y: number, polygons: readonly Point[][], fillRule: CanvasFillRule): boolean {
+  if (polygons.length === 0) {
+    return false;
+  }
+
+  if (polygons.some((polygon) => isPointOnPolygonEdge(x, y, polygon))) {
+    return true;
+  }
+
+  const winding = polygons.reduce((total, polygon) => total + windingNumber(x, y, polygon), 0);
+  return fillRule === "evenodd" ? Math.abs(winding) % 2 === 1 : winding !== 0;
 }
 
 function fillPolygon(
@@ -3099,6 +3434,39 @@ function isPointInPolygon(x: number, y: number, polygon: readonly Point[]): bool
   return inside;
 }
 
+function isPointOnPolygonEdge(x: number, y: number, polygon: readonly Point[]): boolean {
+  const epsilon = 1e-9;
+
+  for (let index = 0, previousIndex = polygon.length - 1; index < polygon.length; previousIndex = index, index += 1) {
+    const start = polygon[previousIndex];
+    const end = polygon[index];
+    const segmentLength = pointDistance(start, end);
+
+    if (segmentLength === 0) {
+      continue;
+    }
+
+    const projection =
+      ((x - start.x) * (end.x - start.x) + (y - start.y) * (end.y - start.y)) /
+      (segmentLength * segmentLength);
+
+    if (projection < -epsilon || projection > 1 + epsilon) {
+      continue;
+    }
+
+    const closest = {
+      x: start.x + (end.x - start.x) * clamp(projection, 0, 1),
+      y: start.y + (end.y - start.y) * clamp(projection, 0, 1)
+    };
+
+    if (pointDistance({ x, y }, closest) <= epsilon) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function windingNumber(x: number, y: number, polygon: readonly Point[]): number {
   let winding = 0;
 
@@ -3154,17 +3522,20 @@ function normalizeArcSweep(startAngle: number, endAngle: number, counterclockwis
   const fullCircle = Math.PI * 2;
   let sweep = endAngle - startAngle;
 
-  if (!counterclockwise && sweep >= fullCircle) {
-    return fullCircle;
+  if (!counterclockwise) {
+    if (Math.abs(sweep) >= fullCircle) {
+      return fullCircle;
+    }
+
+    return positiveModulo(sweep, fullCircle);
   }
 
-  if (counterclockwise && sweep <= -fullCircle) {
+  if (Math.abs(sweep) >= fullCircle) {
     return -fullCircle;
   }
 
   sweep = positiveModulo(sweep, fullCircle);
-
-  if (counterclockwise && sweep !== 0) {
+  if (sweep !== 0) {
     sweep -= fullCircle;
   }
 
@@ -3172,28 +3543,55 @@ function normalizeArcSweep(startAngle: number, endAngle: number, counterclockwis
 }
 
 function currentPathPoint(commands: readonly PathCommand[]): Point | undefined {
-  for (let index = commands.length - 1; index >= 0; index -= 1) {
-    const command = commands[index];
+  let start: Point | undefined;
+  let current: Point | undefined;
 
-    if (command.type === "moveTo" || command.type === "lineTo") {
-      return { x: command.x, y: command.y };
+  for (const command of commands) {
+    if (command.type === "moveTo") {
+      current = { x: command.x, y: command.y };
+      start = current;
+      continue;
     }
 
-    if (command.type === "quadraticCurveTo" || command.type === "bezierCurveTo") {
-      return { x: command.x, y: command.y };
+    if (command.type === "lineTo") {
+      current = { x: command.x, y: command.y };
+      start ??= current;
+      continue;
+    }
+
+    if (command.type === "quadraticCurveTo") {
+      current = { x: command.x, y: command.y };
+      start ??= { x: command.cpx, y: command.cpy };
+      continue;
+    }
+
+    if (command.type === "bezierCurveTo") {
+      current = { x: command.x, y: command.y };
+      start ??= { x: command.cp1x, y: command.cp1y };
+      continue;
     }
 
     if (command.type === "ellipse") {
       const points = ellipsePoints(command);
-      return points[points.length - 1];
+      if (points.length > 0) {
+        current = points[points.length - 1];
+        start ??= points[0];
+      }
+      continue;
     }
 
     if (command.type === "rect") {
-      return { x: command.x, y: command.y };
+      current = { x: command.x, y: command.y };
+      start = current;
+      continue;
+    }
+
+    if (start) {
+      current = start;
     }
   }
 
-  return undefined;
+  return current;
 }
 
 function arcToSegments(
@@ -3239,7 +3637,7 @@ function arcToSegments(
   };
 }
 
-function normalizeRoundRectRadii(radii: number | DOMPointInit | Array<number | DOMPointInit>): [Point, Point, Point, Point] {
+function normalizeRoundRectRadii(radii: number | DOMPointInit | Array<number | DOMPointInit>): [Point, Point, Point, Point] | undefined {
   const values = Array.isArray(radii) ? radii : [radii];
 
   if (values.length < 1 || values.length > 4) {
@@ -3247,17 +3645,41 @@ function normalizeRoundRectRadii(radii: number | DOMPointInit | Array<number | D
   }
 
   const points = values.map(roundRectRadiusPoint);
+  if (points.some((point) => point === undefined)) {
+    return undefined;
+  }
+
   const [topLeft, topRight = topLeft, bottomRight = topLeft, bottomLeft = topRight] =
     points.length === 3 ? [points[0], points[1], points[2], points[1]] : points;
 
   return [topLeft, topRight, bottomRight, bottomLeft] as [Point, Point, Point, Point];
 }
 
-function roundRectRadiusPoint(value: number | DOMPointInit): Point {
-  const point = typeof value === "number" ? { x: value, y: value } : { x: value.x ?? 0, y: value.y ?? 0 };
+function roundRectRadiusPoint(value: number | DOMPointInit | undefined): Point | undefined {
+  if (typeof value === "bigint") {
+    throw new TypeError("The radius value cannot be a BigInt.");
+  }
 
-  if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < 0 || point.y < 0) {
-    throw createRangeError("The radius provided is negative or non-finite.");
+  if (value !== undefined && value !== null && typeof value !== "number") {
+    const point = value as DOMPointInit & { readonly x?: unknown; readonly y?: unknown };
+    if (typeof point.x === "bigint" || typeof point.y === "bigint") {
+      throw new TypeError("The radius value cannot be a BigInt.");
+    }
+  }
+
+  const point =
+    typeof value === "number"
+      ? { x: value, y: value }
+      : value === undefined || value === null
+        ? { x: 0, y: 0 }
+        : { x: Number(value.x ?? 0), y: Number(value.y ?? 0) };
+
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+    return undefined;
+  }
+
+  if (point.x < 0 || point.y < 0) {
+    throw createRangeError("The radius provided is negative.");
   }
 
   return point;
@@ -3348,6 +3770,16 @@ function transformPoint(matrix: Matrix2D, x: number, y: number): Point {
   };
 }
 
+function inverseTransformPoint(matrix: Matrix2D, x: number, y: number): Point | undefined {
+  const inverse = new CanvasTransformMatrix(matrix).invertSelf();
+
+  if (![inverse.a, inverse.b, inverse.c, inverse.d, inverse.e, inverse.f].every(Number.isFinite)) {
+    return undefined;
+  }
+
+  return transformPoint(matrixFromObject(inverse), x, y);
+}
+
 function matrixFromObject(matrix: CanvasTransformMatrix | Matrix2D): Matrix2D {
   if (matrix instanceof CanvasTransformMatrix) {
     return [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f];
@@ -3394,6 +3826,18 @@ function isCanvasTextRendering(value: unknown): value is CanvasTextRendering {
 
 function isCanvasImageSmoothingQuality(value: unknown): value is CanvasImageSmoothingQuality {
   return typeof value === "string" && CANVAS_IMAGE_SMOOTHING_QUALITIES.has(value);
+}
+
+function normalizeCanvasFillRule(value: unknown): CanvasFillRule {
+  if (value === undefined || value === "nonzero") {
+    return "nonzero";
+  }
+
+  if (value === "evenodd") {
+    return "evenodd";
+  }
+
+  throw new TypeError("The fill rule must be either \"nonzero\" or \"evenodd\".");
 }
 
 function parseCanvasPaintStyle(

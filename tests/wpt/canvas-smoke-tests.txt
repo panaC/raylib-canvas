@@ -114,6 +114,7 @@ html/canvas/element/pixel-manipulation/2d.imageData.put.basic.html
 html/canvas/element/pixel-manipulation/2d.imageData.put.dirty.zero.html
 html/canvas/element/manual/the-canvas-state/2d.state.saverestore.imageSmoothingEnabled.html
 html/canvas/element/manual/transformations/2d.transformation.getTransform.html
+html/canvas/element/transformations/2d.transformation.order.html
 html/canvas/element/transformations/2d.transformation.scale.basic.html
 html/canvas/element/transformations/2d.transformation.scale.large.html
 html/canvas/element/transformations/2d.transformation.scale.multiple.html

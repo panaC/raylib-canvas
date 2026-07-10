@@ -872,6 +872,59 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 0]);
   });
 
+  it("clips subsequent drawing and restores the previous clip region", async () => {
+    const canvas = await createTestCanvas(6, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "green";
+    ctx.fillRect(0, 0, 6, 4);
+    ctx.save();
+    ctx.rect(0, 0, 3, 4);
+    ctx.clip();
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 6, 4);
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 4, 1)).toEqual([0, 128, 0, 255]);
+
+    ctx.restore();
+    ctx.fillStyle = "blue";
+    ctx.fillRect(4, 1, 1, 1);
+    expect(pixelAt(ctx, 4, 1)).toEqual([0, 0, 255, 255]);
+  });
+
+  it("uses an empty path as an empty clip region", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "green";
+    ctx.fillRect(0, 0, 4, 4);
+    ctx.beginPath();
+    ctx.clip();
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 4, 4);
+    ctx.clearRect(0, 0, 4, 4);
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 128, 0, 255]);
+  });
+
+  it("hit-tests filled and stroked paths", async () => {
+    const canvas = await createTestCanvas(8, 8);
+    const ctx = canvas.getContext("2d");
+
+    ctx.beginPath();
+    ctx.rect(1, 1, 4, 4);
+    expect(ctx.isPointInPath(2, 2)).toBe(true);
+    expect(ctx.isPointInPath(6, 6)).toBe(false);
+
+    ctx.beginPath();
+    ctx.moveTo(1, 6);
+    ctx.lineTo(6, 6);
+    ctx.lineWidth = 2;
+    expect(ctx.isPointInStroke(3, 6)).toBe(true);
+    expect(ctx.isPointInStroke(3, 3)).toBe(false);
+  });
+
   it("validates path radii", async () => {
     const canvas = await createTestCanvas(8, 8);
     const ctx = canvas.getContext("2d");

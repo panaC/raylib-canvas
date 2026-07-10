@@ -159,8 +159,8 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
         if (property === "drawImage") {
           return (...args: unknown[]) => {
             const [image, ...drawArgs] = args;
-            const drawImage = getCurrentContext(domCanvas).drawImage as (source: Canvas, ...numbers: number[]) => void;
-            return drawImage(toCanvasImageSource(image), ...(drawArgs as number[]));
+            const context = getCurrentContext(domCanvas);
+            return context.drawImage(toCanvasImageSource(image), ...(drawArgs as number[]));
           };
         }
 

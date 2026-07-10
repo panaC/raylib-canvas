@@ -33,11 +33,6 @@
     },
     {
       "status": "blocked",
-      "prefix": "html/canvas/element/transformations/",
-      "reason": "Only scale(), rotate(), translate(), transform(), setTransform(), resetTransform(), and getTransform() basics exist; broader transform edge cases are not implemented yet."
-    },
-    {
-      "status": "blocked",
       "prefix": "html/canvas/element/line-styles/",
       "reason": "Stroke state and line styling are not implemented yet."
     },

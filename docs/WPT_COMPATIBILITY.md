@@ -115,6 +115,9 @@ covers official upstream files for:
 - `imageSmoothingEnabled` and `imageSmoothingQuality` default, assignment, and
   save/restore behavior; quality is stored as a hint, while rendering currently
   switches between nearest-neighbor and bilinear smoothing
+- the full upstream `html/canvas/element/transformations/` directory,
+  including transform ordering, skewed transforms, non-finite argument
+  handling, and matrix multiplication behavior
 - `getTransform()` identity, scale, rotate, translate, reset, and DOMMatrix
   array serialization
 - `resetTransform()` matrix reset through `getTransform()` coverage
