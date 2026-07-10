@@ -5,6 +5,7 @@ on:
     branches:
       - develop
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,8 +17,37 @@ env:
   WPT_INSTALL_WEBDRIVER: "1"
 
 jobs:
+  ci-gate:
+    name: Check CI opt-in
+    runs-on: ubuntu-latest
+    outputs:
+      run_ci: ${{ steps.gate.outputs.run_ci }}
+    steps:
+      - name: Checkout trigger commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Check commit message
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_ci=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          commit_message="$(git log -1 --pretty=%B)"
+          if printf '%s' "$commit_message" | grep -Fq "pass ci"; then
+            echo "run_ci=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_ci=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-test:
     name: ${{ matrix.renderer }} renderer
+    needs: ci-gate
+    if: needs.ci-gate.outputs.run_ci == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
