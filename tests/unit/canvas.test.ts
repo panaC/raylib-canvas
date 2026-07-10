@@ -177,6 +177,53 @@ describe("createCanvas", () => {
     expect(transform.f).toBe(3);
   });
 
+  it("returns an identity matrix for an untransformed context", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(0);
+    expect(transform.f).toBe(0);
+    expect(transform.is2D).toBe(true);
+    expect(transform.isIdentity).toBe(true);
+  });
+
+  it("returns DOMMatrix-compatible aliases and array serialization", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.transform(1, 2, 3, 4, 5, 6);
+    const transform = ctx.getTransform();
+
+    expect(transform.m11).toBe(1);
+    expect(transform.m12).toBe(2);
+    expect(transform.m21).toBe(3);
+    expect(transform.m22).toBe(4);
+    expect(transform.m41).toBe(5);
+    expect(transform.m42).toBe(6);
+    expect(Array.from(transform.toFloat32Array())).toEqual([1, 2, 0, 0, 3, 4, 0, 0, 0, 0, 1, 0, 5, 6, 0, 1]);
+    expect(Array.from(transform.toFloat64Array())).toEqual([1, 2, 0, 0, 3, 4, 0, 0, 0, 0, 1, 0, 5, 6, 0, 1]);
+    expect(transform.isIdentity).toBe(false);
+  });
+
+  it("returns a copy of the current transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    const transform = ctx.getTransform();
+    transform.e = 99;
+    transform.m42 = 100;
+
+    const nextTransform = ctx.getTransform();
+    expect(nextTransform.e).toBe(2);
+    expect(nextTransform.f).toBe(3);
+  });
+
   it("post-multiplies translation with the existing transform", async () => {
     const canvas = await createTestCanvas(4, 4);
     const ctx = canvas.getContext("2d");
@@ -222,6 +269,229 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 3, 4)).toEqual([255, 0, 0, 255]);
     expect(pixelAt(ctx, 4, 5)).toEqual([255, 0, 0, 255]);
     expect(pixelAt(ctx, 5, 5)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("adds an arbitrary matrix to the current transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.transform(1, 2, 3, 4, 5, 6);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(2);
+    expect(transform.c).toBe(3);
+    expect(transform.d).toBe(4);
+    expect(transform.e).toBe(5);
+    expect(transform.f).toBe(6);
+  });
+
+  it("post-multiplies arbitrary matrices with the existing transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.transform(1, 2, 3, 4, 5, 6);
+    ctx.transform(-2, 1, 1.5, -0.5, 1, -2);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(0);
+    expect(transform.f).toBe(0);
+  });
+
+  it("ignores non-finite transform matrix components", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    ctx.transform(Number.NaN, 1, 0, 1, 0, 0);
+    ctx.transform(1, 0, Number.POSITIVE_INFINITY, 1, 0, 0);
+    ctx.transform(1, 0, 0, 1, 0, Number.NEGATIVE_INFINITY);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(2);
+    expect(transform.f).toBe(3);
+  });
+
+  it("applies skewed transforms to filled rectangle rendering", async () => {
+    const canvas = await createTestCanvas(7, 7);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.transform(1, 0, 1, 1, 1, 1);
+    ctx.fillRect(1, 1, 2, 2);
+
+    expect(pixelAt(ctx, 2, 2)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 3, 2)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 4, 3)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 5, 3)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 6, 4)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("saves and restores the current transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.transform(1, 2, 3, 4, 5, 6);
+    ctx.save();
+    ctx.translate(10, 20);
+    ctx.restore();
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(2);
+    expect(transform.c).toBe(3);
+    expect(transform.d).toBe(4);
+    expect(transform.e).toBe(5);
+    expect(transform.f).toBe(6);
+  });
+
+  it("replaces the current transform with setTransform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(10, 20);
+    ctx.setTransform(1, 2, 3, 4, 5, 6);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(2);
+    expect(transform.c).toBe(3);
+    expect(transform.d).toBe(4);
+    expect(transform.e).toBe(5);
+    expect(transform.f).toBe(6);
+  });
+
+  it("resets the current transform when setTransform has no arguments", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.setTransform(2, 0, 0, 3, 4, 5);
+    ctx.setTransform();
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(0);
+    expect(transform.f).toBe(0);
+  });
+
+  it("throws when setTransform has missing numeric arguments", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+    const setTransform = ctx.setTransform as (...args: number[]) => void;
+
+    expect(() => setTransform.call(ctx, 1)).toThrow(TypeError);
+    expect(() => setTransform.call(ctx, 1, 0)).toThrow(TypeError);
+    expect(() => setTransform.call(ctx, 1, 0, 0)).toThrow(TypeError);
+    expect(() => setTransform.call(ctx, 1, 0, 0, 1)).toThrow(TypeError);
+    expect(() => setTransform.call(ctx, 1, 0, 0, 1, 0)).toThrow(TypeError);
+  });
+
+  it("ignores non-finite setTransform matrix components", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    ctx.setTransform(Number.NaN, 1, 0, 1, 0, 0);
+    ctx.setTransform(1, 0, Number.POSITIVE_INFINITY, 1, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, Number.NEGATIVE_INFINITY);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(2);
+    expect(transform.f).toBe(3);
+  });
+
+  it("applies setTransform to filled rectangle rendering", async () => {
+    const canvas = await createTestCanvas(7, 7);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(4, 4);
+    ctx.setTransform(1, 0, 1, 1, 1, 1);
+    ctx.fillStyle = "red";
+    ctx.fillRect(1, 1, 2, 2);
+
+    expect(pixelAt(ctx, 2, 2)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 3, 2)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 4, 3)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 5, 3)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 6, 4)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("resets the current transform to identity", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.transform(1, 2, 3, 4, 5, 6);
+    ctx.resetTransform();
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(0);
+    expect(transform.f).toBe(0);
+  });
+
+  it("applies untransformed rendering after resetTransform", async () => {
+    const canvas = await createTestCanvas(6, 6);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "blue";
+    ctx.translate(3, 3);
+    ctx.fillRect(0, 0, 2, 2);
+    ctx.resetTransform();
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 2, 2);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 255, 255]);
+    expect(pixelAt(ctx, 5, 5)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("keeps resetTransform idempotent", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.resetTransform();
+    ctx.resetTransform();
+    const transform = ctx.getTransform();
+
+    expect(transform.isIdentity).toBe(true);
+    expect(Array.from(transform.toFloat32Array())).toEqual([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  });
+
+  it("restores a saved transform after resetTransform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    ctx.save();
+    ctx.resetTransform();
+    ctx.restore();
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(2);
+    expect(transform.f).toBe(3);
   });
 
   it("adds rotation to the current transform", async () => {

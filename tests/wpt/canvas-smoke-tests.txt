@@ -16,6 +16,7 @@ html/canvas/element/pixel-manipulation/2d.imageData.get.source.outside.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.source.negative.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.zero.html
 html/canvas/element/pixel-manipulation/2d.imageData.get.nonfinite.html
+html/canvas/element/manual/transformations/2d.transformation.getTransform.html
 html/canvas/element/transformations/2d.transformation.scale.basic.html
 html/canvas/element/transformations/2d.transformation.scale.large.html
 html/canvas/element/transformations/2d.transformation.scale.multiple.html
@@ -28,5 +29,12 @@ html/canvas/element/transformations/2d.transformation.rotate.radians.html
 html/canvas/element/transformations/2d.transformation.rotate.wrap.html
 html/canvas/element/transformations/2d.transformation.rotate.wrapnegative.html
 html/canvas/element/transformations/2d.transformation.rotate.zero.html
+html/canvas/element/transformations/2d.transformation.setTransform.multiple.html
+html/canvas/element/transformations/2d.transformation.setTransform.nonfinite.html
+html/canvas/element/transformations/2d.transformation.setTransform.skewed.html
+html/canvas/element/transformations/2d.transformation.transform.identity.html
+html/canvas/element/transformations/2d.transformation.transform.multiply.html
+html/canvas/element/transformations/2d.transformation.transform.nonfinite.html
+html/canvas/element/transformations/2d.transformation.transform.skewed.html
 html/canvas/element/transformations/2d.transformation.translate.basic.html
 html/canvas/element/transformations/2d.transformation.translate.nonfinite.html

@@ -33,10 +33,10 @@
 | `scale(x, y)` | [WHATWG scale](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-scale-dev) | done |
 | `rotate(angle)` | [WHATWG rotate](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-rotate-dev) | done |
 | `translate(x, y)` | [WHATWG translate](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-translate-dev) | done |
-| `transform(a, b, c, d, e, f)` | [WHATWG transform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-transform-dev) | waiting |
-| `getTransform()` | [WHATWG getTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-gettransform-dev) | waiting |
-| `setTransform(...)` | [WHATWG setTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-settransform-dev) | waiting |
-| `resetTransform()` | [WHATWG resetTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-resettransform-dev) | waiting |
+| `transform(a, b, c, d, e, f)` | [WHATWG transform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-transform-dev) | done |
+| `getTransform()` | [WHATWG getTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-gettransform-dev) | done |
+| `setTransform(...)` | [WHATWG setTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-settransform-dev) | done |
+| `resetTransform()` | [WHATWG resetTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-resettransform-dev) | done |
 | `globalAlpha` | [WHATWG globalAlpha](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalalpha-dev) | waiting |
 | `globalCompositeOperation` | [WHATWG globalCompositeOperation](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalcompositeoperation-dev) | waiting |
 | `lineWidth` | [WHATWG lineWidth](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linewidth-dev) | waiting |

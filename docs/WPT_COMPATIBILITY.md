@@ -52,8 +52,15 @@ covers official upstream files for:
 - `fillStyle` hex parsing and invalid-name retention
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
   errors, negative-size reads, and non-finite argument errors
+- `getTransform()` identity, scale, rotate, translate, reset, and DOMMatrix
+  array serialization
+- `resetTransform()` matrix reset through `getTransform()` coverage
 - `scale()` basic, large, repeated, negative, zero, and non-finite transforms
 - `rotate()` direction, radians, wraparound, zero, and non-finite transforms
+- `setTransform()` replacement, no-argument reset, skewed, and non-finite
+  transforms
+- `transform()` identity, matrix multiplication, skewed, and non-finite
+  transforms
 - `translate()` basic and non-finite transforms
 
 Run the full upstream Canvas tree with:

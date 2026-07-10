@@ -95,6 +95,7 @@ export interface Canvas2DContext {
    * Replaces the current transform matrix.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-settransform-dev
    */
+  setTransform(): void;
   setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
 
   /**
@@ -293,6 +294,62 @@ export class CanvasTransformMatrix {
     [this.a, this.b, this.c, this.d, this.e, this.f] = matrix;
   }
 
+  get is2D(): boolean {
+    return true;
+  }
+
+  get isIdentity(): boolean {
+    return isIdentityMatrix(matrixFromObject(this));
+  }
+
+  get m11(): number {
+    return this.a;
+  }
+
+  set m11(value: number) {
+    this.a = value;
+  }
+
+  get m12(): number {
+    return this.b;
+  }
+
+  set m12(value: number) {
+    this.b = value;
+  }
+
+  get m21(): number {
+    return this.c;
+  }
+
+  set m21(value: number) {
+    this.c = value;
+  }
+
+  get m22(): number {
+    return this.d;
+  }
+
+  set m22(value: number) {
+    this.d = value;
+  }
+
+  get m41(): number {
+    return this.e;
+  }
+
+  set m41(value: number) {
+    this.e = value;
+  }
+
+  get m42(): number {
+    return this.f;
+  }
+
+  set m42(value: number) {
+    this.f = value;
+  }
+
   invertSelf(): this {
     const determinant = this.a * this.d - this.b * this.c;
 
@@ -315,6 +372,18 @@ export class CanvasTransformMatrix {
     const multiplied = multiplyMatrices(matrixFromObject(this), matrixFromObject(other));
     [this.a, this.b, this.c, this.d, this.e, this.f] = multiplied;
     return this;
+  }
+
+  toFloat32Array(): Float32Array {
+    return new Float32Array(this.#toMatrix4());
+  }
+
+  toFloat64Array(): Float64Array {
+    return new Float64Array(this.#toMatrix4());
+  }
+
+  #toMatrix4(): number[] {
+    return [this.a, this.b, 0, 0, this.c, this.d, 0, 0, 0, 0, 1, 0, this.e, this.f, 0, 1];
   }
 }
 
@@ -503,12 +572,23 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#transform = multiplyMatrices(this.#transform, [a, b, c, d, e, f]);
   }
 
-  setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void {
+  setTransform(): void;
+  setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void;
+  setTransform(a?: number, b?: number, c?: number, d?: number, e?: number, f?: number): void {
+    if (arguments.length === 0) {
+      this.resetTransform();
+      return;
+    }
+
+    if (arguments.length !== 6) {
+      throw new TypeError("setTransform() requires either zero or six arguments");
+    }
+
     if (![a, b, c, d, e, f].every(Number.isFinite)) {
       return;
     }
 
-    this.#transform = [a, b, c, d, e, f];
+    this.#transform = [a, b, c, d, e, f] as Matrix2D;
   }
 
   resetTransform(): void {
