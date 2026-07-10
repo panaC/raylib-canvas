@@ -9,3 +9,4 @@
 - Add unit tests for API behavior and PNG encoding; add e2e, WPT, or pdf.js coverage for visible rendering or integration changes.
 - Update `docs/API_MATRIX.md` and `docs/WPT_COMPATIBILITY.md` when Canvas API methods are implemented or updated.
 - Do not replace user changes without explicit permission.
+- Use Conventional Commits for name and description

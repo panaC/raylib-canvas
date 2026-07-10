@@ -98,6 +98,32 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 4, 4)).toEqual([0, 0, 0, 0]);
   });
 
+  it("clips filled rectangles to the canvas bounds", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(-1, -1, 3, 3);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 2, 2)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("does not draw zero-sized filled rectangles", async () => {
+    const canvas = await createTestCanvas(3, 3);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "green";
+    ctx.fillRect(0, 0, 3, 3);
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 3, 0);
+    ctx.fillRect(0, 0, 0, 3);
+    ctx.fillRect(0, 0, 0, 0);
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 128, 0, 255]);
+  });
+
   it("ignores non-finite rectangle arguments", async () => {
     const canvas = await createTestCanvas(3, 3);
     const ctx = canvas.getContext("2d");
@@ -107,6 +133,33 @@ describe("createCanvas", () => {
     ctx.fillRect(0, 0, Number.POSITIVE_INFINITY, 1);
 
     expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("clears negative rectangle dimensions in the opposite direction", async () => {
+    const canvas = await createTestCanvas(5, 5);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 5, 5);
+    ctx.clearRect(4, 4, -2, -3);
+
+    expect(pixelAt(ctx, 2, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 4, 4)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("does not clear zero-sized rectangles or non-finite rectangles", async () => {
+    const canvas = await createTestCanvas(3, 3);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "green";
+    ctx.fillRect(0, 0, 3, 3);
+    ctx.clearRect(0, 0, 3, 0);
+    ctx.clearRect(0, 0, 0, 3);
+    ctx.clearRect(Number.NEGATIVE_INFINITY, 0, 3, 3);
+    ctx.clearRect(0, 0, 3, Number.NaN);
+
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 128, 0, 255]);
   });
 
   it("clears pixels to transparent black", async () => {
@@ -120,6 +173,19 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
     expect(pixelAt(ctx, 1, 1)).toEqual([0, 0, 0, 0]);
     expect(pixelAt(ctx, 2, 2)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("clips cleared rectangles to the canvas bounds", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 4, 4);
+    ctx.clearRect(-1, -1, 3, 3);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 2, 2)).toEqual([255, 0, 0, 255]);
   });
 
   it("copies image data and treats out-of-bounds pixels as transparent black", async () => {
@@ -139,6 +205,25 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
   });
 
+  it("copies image data with negative source dimensions from top-left to bottom-right", async () => {
+    const canvas = await createTestCanvas(10, 5);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, 10, 5);
+    ctx.fillStyle = "white";
+    ctx.fillRect(2, 1, 6, 1);
+
+    const imageData = ctx.getImageData(8, 3, -2, -2);
+    expect(imageData.width).toBe(2);
+    expect(imageData.height).toBe(2);
+    expect(Array.from(imageData.data.slice(0, 4))).toEqual([255, 255, 255, 255]);
+    expect(Array.from(imageData.data.slice(imageData.data.length - 4))).toEqual([0, 0, 0, 255]);
+
+    const outOfBounds = ctx.getImageData(0, 0, -1, -1);
+    expect(Array.from(outOfBounds.data)).toEqual([0, 0, 0, 0]);
+  });
+
   it("throws IndexSizeError for zero-sized image data reads", async () => {
     const canvas = await createTestCanvas(2, 2);
     const ctx = canvas.getContext("2d");
@@ -152,10 +237,12 @@ describe("createCanvas", () => {
 
     const blob = await toBlob(canvas, "image/jpeg");
     const bytes = new Uint8Array(await blob!.arrayBuffer());
+    const dataUrl = canvas.toDataURL("image/jpeg");
 
     expect(blob?.type).toBe("image/png");
     expect([...bytes.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-    expect(canvas.toDataURL("image/jpeg")).toMatch(/^data:image\/png;base64,/);
+    expect(dataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(dataUrl).toContain("iVBORw0KGgo");
   });
 
   it.runIf(USE_RAYLIB_CONTEXT)("returns a live mutable pixel view from the raylib context", async () => {

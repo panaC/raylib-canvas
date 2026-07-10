@@ -47,11 +47,11 @@ The smoke suite is listed in `tests/wpt/canvas-smoke-tests.txt`. It currently
 covers official upstream files for:
 
 - canvas context existence and context sharing
-- `fillRect()` basic and negative-size drawing
-- `clearRect()` basic and negative-size clearing
+- `fillRect()` basic, negative-size, zero-size, and non-finite drawing
+- `clearRect()` basic, negative-size, zero-size, and non-finite clearing
 - `fillStyle` hex parsing and invalid-name retention
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
-  errors, and non-finite argument errors
+  errors, negative-size reads, and non-finite argument errors
 
 Run the full upstream Canvas tree with:
 
