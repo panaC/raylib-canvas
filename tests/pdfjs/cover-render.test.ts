@@ -1,4 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { performance } from "node:perf_hooks";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -13,7 +14,9 @@ import {
 } from "../../src/index";
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = join(TEST_DIR, "..", "..");
 const PDF_FIXTURE_PATH = join(TEST_DIR, "compressed.tracemonkey-pldi-09.pdf");
+const PERFORMANCE_RESULT_PATH = join(PROJECT_ROOT, "test-results", "pdfjs", "cover-render-performance.json");
 
 type CanvasAndContext = {
   canvas: Canvas | null;
@@ -22,11 +25,35 @@ type CanvasAndContext = {
 };
 
 const USE_RAYLIB_RENDERER = process.env.RAYLIB_CANVAS_RENDERER === "raylib";
+const RENDERER_NAME = USE_RAYLIB_RENDERER ? "raylib WASM renderer" : "JavaScript renderer";
 const COVER_PNG_PATH = join(
   TEST_DIR,
   USE_RAYLIB_RENDERER ? "compressed.tracemonkey-pldi-09-cover-raylib.png" : "compressed.tracemonkey-pldi-09-cover.png"
 );
 let raylibModule: RaylibCanvasWasmModule | undefined;
+
+type CoverRenderTiming = {
+  renderer: string;
+  coverPng: string;
+  width: number;
+  height: number;
+  nonWhitePixels: number;
+  timingsMs: {
+    pdfLoad: number;
+    pageLoad: number;
+    render: number;
+    pngEncode: number;
+    pngWrite: number;
+    total: number;
+  };
+  updatedAt: string;
+};
+
+type CoverRenderPerformanceReport = {
+  fixture: string;
+  scale: number;
+  results: Record<string, CoverRenderTiming>;
+};
 
 function toPngBytes(canvas: Canvas): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
@@ -56,6 +83,32 @@ function countNonWhitePixels(png: PNG): number {
   }
 
   return pixels;
+}
+
+function roundTiming(milliseconds: number): number {
+  return Number(milliseconds.toFixed(2));
+}
+
+async function writePerformanceResult(result: CoverRenderTiming): Promise<void> {
+  await mkdir(dirname(PERFORMANCE_RESULT_PATH), { recursive: true });
+
+  let report: CoverRenderPerformanceReport = {
+    fixture: "tests/pdfjs/compressed.tracemonkey-pldi-09.pdf",
+    scale: 1,
+    results: {}
+  };
+
+  try {
+    report = JSON.parse(await readFile(PERFORMANCE_RESULT_PATH, "utf8")) as CoverRenderPerformanceReport;
+  } catch {
+    // The report is optional generated test output.
+  }
+
+  report.fixture = "tests/pdfjs/compressed.tracemonkey-pldi-09.pdf";
+  report.scale = 1;
+  report.results[result.renderer] = result;
+
+  await writeFile(PERFORMANCE_RESULT_PATH, `${JSON.stringify(report, null, 2)}\n`);
 }
 
 function createCanvasAndContext(width: number, height: number): CanvasAndContext {
@@ -127,25 +180,57 @@ describe("pdfjs-dist cover rendering", () => {
     });
 
     try {
+      const totalStart = performance.now();
+      const pdfLoadStart = performance.now();
       const pdf = await loadingTask.promise;
+      const pdfLoadEnd = performance.now();
+      const pageLoadStart = performance.now();
       const page = await pdf.getPage(1);
+      const pageLoadEnd = performance.now();
       const viewport = page.getViewport({ scale: 1 });
       const canvasAndContext = createCanvasAndContext(viewport.width, viewport.height);
 
+      const renderStart = performance.now();
       await page.render({
         canvasContext: canvasAndContext.context as unknown as CanvasRenderingContext2D,
         viewport
       }).promise;
+      const renderEnd = performance.now();
 
+      const pngEncodeStart = performance.now();
       const pngBytes = await toPngBytes(canvasAndContext.canvas!);
+      const pngEncodeEnd = performance.now();
       canvasAndContext.renderer?.dispose();
+      const pngWriteStart = performance.now();
       await writeFile(COVER_PNG_PATH, pngBytes);
+      const pngWriteEnd = performance.now();
       const png = PNG.sync.read(Buffer.from(pngBytes));
+      const nonWhitePixels = countNonWhitePixels(png);
+      const totalEnd = performance.now();
 
       expect([...pngBytes.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
       expect(png.width).toBe(612);
       expect(png.height).toBe(792);
-      expect(countNonWhitePixels(png)).toBeGreaterThan(1_000);
+      expect(nonWhitePixels).toBeGreaterThan(1_000);
+
+      await writePerformanceResult({
+        renderer: RENDERER_NAME,
+        coverPng: USE_RAYLIB_RENDERER
+          ? "tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png"
+          : "tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png",
+        width: png.width,
+        height: png.height,
+        nonWhitePixels,
+        timingsMs: {
+          pdfLoad: roundTiming(pdfLoadEnd - pdfLoadStart),
+          pageLoad: roundTiming(pageLoadEnd - pageLoadStart),
+          render: roundTiming(renderEnd - renderStart),
+          pngEncode: roundTiming(pngEncodeEnd - pngEncodeStart),
+          pngWrite: roundTiming(pngWriteEnd - pngWriteStart),
+          total: roundTiming(totalEnd - totalStart)
+        },
+        updatedAt: new Date().toISOString()
+      });
     } finally {
       await loadingTask.destroy();
 

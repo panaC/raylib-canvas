@@ -189,6 +189,15 @@ The pdf.js integration test renders page 1 of [tests/pdfjs/compressed.tracemonke
 - Image size is `612x792`.
 - Rendered output contains more than 1,000 non-white pixels.
 
+Latest checked pdf.js cover timing report: [test-results/pdfjs/cover-render-performance.json](test-results/pdfjs/cover-render-performance.json)
+
+Single-run local timings from `npm run test:pdfjs` followed by `npm run test:pdfjs:raylib` on July 10, 2026:
+
+| Renderer | PDF load | Page load | Render | PNG encode | PNG write | Total cover generation |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| JavaScript renderer | 121.00 ms | 1.76 ms | 390.44 ms | 85.08 ms | 2.19 ms | 647.77 ms |
+| raylib WASM renderer | 112.53 ms | 2.65 ms | 407.32 ms | 62.75 ms | 1.75 ms | 634.07 ms |
+
 | JavaScript renderer | raylib WASM renderer |
 | --- | --- |
 | ![pdf.js cover rendered through the JavaScript renderer](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png) | ![pdf.js cover rendered through the raylib WASM renderer](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png) |
