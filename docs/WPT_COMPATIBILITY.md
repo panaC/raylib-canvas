@@ -48,7 +48,13 @@ covers official upstream files for:
 
 - canvas context existence and context sharing
 - `fillRect()` basic, negative-size, zero-size, and non-finite drawing
-- `clearRect()` basic, negative-size, zero-size, and non-finite clearing
+- `clearRect()` basic, negative-size, zero-size, non-finite clearing, and
+  immunity from `globalAlpha`/`globalCompositeOperation`
+- `globalAlpha` defaults, invalid/range assignment behavior, and filled
+  rectangle rendering
+- `globalCompositeOperation` defaults, accepted core operation strings,
+  invalid assignment behavior, and solid filled rectangle rendering for core
+  Porter-Duff modes plus `lighter` and `clear`
 - `fillStyle` hex parsing and invalid-name retention
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
   errors, negative-size reads, and non-finite argument errors

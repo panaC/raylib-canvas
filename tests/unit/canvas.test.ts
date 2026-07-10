@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { PNG } from "pngjs";
 import { createCanvas, createRaylibCanvas2DContextFactory } from "../../src/index";
 
 const USE_RAYLIB_CONTEXT = process.env.RAYLIB_CANVAS_CONTEXT === "raylib";
@@ -84,6 +85,145 @@ describe("createCanvas", () => {
 
     ctx.fillRect(0, 0, 1, 1);
     expect(pixelAt(ctx, 0, 0)).toEqual([0, 255, 0, 255]);
+  });
+
+  it("validates globalAlpha assignments", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.globalAlpha).toBe(1);
+
+    ctx.globalAlpha = 0.5;
+    expect(ctx.globalAlpha).toBe(0.5);
+
+    ctx.globalAlpha = Number.POSITIVE_INFINITY;
+    ctx.globalAlpha = Number.NEGATIVE_INFINITY;
+    ctx.globalAlpha = Number.NaN;
+    ctx.globalAlpha = 1.1;
+    ctx.globalAlpha = -0.1;
+    expect(ctx.globalAlpha).toBe(0.5);
+
+    ctx.globalAlpha = 0;
+    expect(ctx.globalAlpha).toBe(0);
+
+    ctx.globalAlpha = 1;
+    expect(ctx.globalAlpha).toBe(1);
+  });
+
+  it("validates globalCompositeOperation assignments", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.globalCompositeOperation).toBe("source-over");
+
+    ctx.globalCompositeOperation = "xor";
+    expect(ctx.globalCompositeOperation).toBe("xor");
+
+    ctx.globalCompositeOperation = "Source-over";
+    ctx.globalCompositeOperation = "over";
+    ctx.globalCompositeOperation = "darker";
+    ctx.globalCompositeOperation = "source-over\0";
+    ctx.globalCompositeOperation = "nonexistent";
+    expect(ctx.globalCompositeOperation).toBe("xor");
+  });
+
+  it("applies globalAlpha to filled rectangles", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#00ff00";
+    ctx.fillRect(0, 0, 2, 2);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(0, 0, 1, 1);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([128, 127, 0, 255]);
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 255, 0, 255]);
+  });
+
+  it("combines globalAlpha with fillStyle alpha", async () => {
+    const canvas = await createTestCanvas(1, 1);
+    const ctx = canvas.getContext("2d");
+
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+    ctx.fillRect(0, 0, 1, 1);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 64]);
+  });
+
+  it("saves and restores compositing state", async () => {
+    const canvas = await createTestCanvas(1, 1);
+    const ctx = canvas.getContext("2d");
+
+    ctx.globalAlpha = 0.25;
+    ctx.globalCompositeOperation = "copy";
+    ctx.save();
+    ctx.globalAlpha = 0.75;
+    ctx.globalCompositeOperation = "xor";
+    ctx.restore();
+
+    expect(ctx.globalAlpha).toBe(0.25);
+    expect(ctx.globalCompositeOperation).toBe("copy");
+  });
+
+  it("applies Porter-Duff globalCompositeOperation modes to filled rectangles", async () => {
+    const cases: Array<{ readonly operation: string; readonly expected: number[] }> = [
+      { operation: "clear", expected: [0, 0, 0, 0] },
+      { operation: "copy", expected: [255, 0, 0, 255] },
+      { operation: "source-over", expected: [255, 0, 0, 255] },
+      { operation: "source-in", expected: [255, 0, 0, 255] },
+      { operation: "source-out", expected: [0, 0, 0, 0] },
+      { operation: "source-atop", expected: [255, 0, 0, 255] },
+      { operation: "destination-over", expected: [0, 0, 255, 255] },
+      { operation: "destination-in", expected: [0, 0, 255, 255] },
+      { operation: "destination-out", expected: [0, 0, 0, 0] },
+      { operation: "destination-atop", expected: [0, 0, 255, 255] },
+      { operation: "lighter", expected: [255, 0, 255, 255] },
+      { operation: "xor", expected: [0, 0, 0, 0] }
+    ];
+
+    for (const { operation, expected } of cases) {
+      const canvas = await createTestCanvas(1, 1);
+      const ctx = canvas.getContext("2d");
+
+      ctx.fillStyle = "#0000ff";
+      ctx.fillRect(0, 0, 1, 1);
+      ctx.globalCompositeOperation = operation;
+      ctx.fillStyle = "#ff0000";
+      ctx.fillRect(0, 0, 1, 1);
+
+      expect(pixelAt(ctx, 0, 0)).toEqual(expected);
+    }
+  });
+
+  it("does not apply globalAlpha or globalCompositeOperation to clearRect", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(0, 0, 2, 2);
+    ctx.globalAlpha = 0;
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.clearRect(0, 0, 1, 1);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 1, 1)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("encodes composited pixels into PNG output", async () => {
+    const canvas = await createTestCanvas(1, 1);
+    const ctx = canvas.getContext("2d");
+
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(0, 0, 1, 1);
+
+    const blob = await toBlob(canvas);
+    const bytes = new Uint8Array(await blob!.arrayBuffer());
+    const png = PNG.sync.read(Buffer.from(bytes));
+
+    expect(Array.from(png.data)).toEqual([255, 0, 0, 128]);
   });
 
   it("draws negative rectangle dimensions in the opposite direction", async () => {

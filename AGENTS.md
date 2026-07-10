@@ -7,6 +7,6 @@
 - Prefer small, tested Canvas API increments over broad unverified surface area.
 - Support the JavaScript renderer first for correctness and portability.
 - Add unit tests for API behavior and PNG encoding; add e2e, WPT, or pdf.js coverage for visible rendering or integration changes.
-- Update `docs/API_MATRIX.md` and `docs/WPT_COMPATIBILITY.md` when Canvas API methods are implemented or updated.
+- Update `docs/API_MATRIX.md` and `docs/WPT_COMPATIBILITY.md` when Canvas API methods are implemented or updated and do not touch on `README.md`, only if requested.
 - Do not replace user changes without explicit permission.
 - Use Conventional Commits for name and description

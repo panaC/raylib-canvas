@@ -37,8 +37,8 @@
 | `getTransform()` | [WHATWG getTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-gettransform-dev) | done |
 | `setTransform(...)` | [WHATWG setTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-settransform-dev) | done |
 | `resetTransform()` | [WHATWG resetTransform](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-resettransform-dev) | done |
-| `globalAlpha` | [WHATWG globalAlpha](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalalpha-dev) | waiting |
-| `globalCompositeOperation` | [WHATWG globalCompositeOperation](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalcompositeoperation-dev) | waiting |
+| `globalAlpha` | [WHATWG globalAlpha](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalalpha-dev) | done |
+| `globalCompositeOperation` | [WHATWG globalCompositeOperation](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalcompositeoperation-dev) | partial |
 | `lineWidth` | [WHATWG lineWidth](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linewidth-dev) | waiting |
 | `lineCap` | [WHATWG lineCap](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linecap-dev) | waiting |
 | `lineJoin` | [WHATWG lineJoin](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-linejoin-dev) | waiting |

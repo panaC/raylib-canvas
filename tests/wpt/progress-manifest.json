@@ -59,7 +59,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/compositing/",
-      "reason": "globalAlpha and globalCompositeOperation are not implemented yet."
+      "reason": "Core globalAlpha/globalCompositeOperation fillRect coverage exists; remaining tests need drawImage(), patterns, shadows, filters, clipping, and pixel-accurate advanced blend modes."
     },
     {
       "status": "blocked",

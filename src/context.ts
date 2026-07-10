@@ -14,6 +14,18 @@ export interface Canvas2DContext {
   fillStyle: string;
 
   /**
+   * Alpha multiplier applied to drawing operations.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalalpha-dev
+   */
+  globalAlpha: number;
+
+  /**
+   * Compositing operation applied to drawing operations.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalcompositeoperation-dev
+   */
+  globalCompositeOperation: string;
+
+  /**
    * Returns the live RGBA backing pixels for encoding and diagnostics.
    * This is a deliberate package extension, not part of the web Canvas API.
    */
@@ -131,6 +143,35 @@ export interface Canvas2DContext {
 
 export type Rgba = readonly [number, number, number, number];
 
+type GlobalCompositeOperation =
+  | "clear"
+  | "copy"
+  | "source-over"
+  | "source-in"
+  | "source-out"
+  | "source-atop"
+  | "destination-over"
+  | "destination-in"
+  | "destination-out"
+  | "destination-atop"
+  | "lighter"
+  | "xor"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "color-burn"
+  | "hard-light"
+  | "soft-light"
+  | "difference"
+  | "exclusion"
+  | "hue"
+  | "saturation"
+  | "color"
+  | "luminosity";
+
 type Matrix2D = readonly [number, number, number, number, number, number];
 
 type PathCommand =
@@ -183,6 +224,35 @@ const NAMED_COLORS: Record<string, Rgba> = {
 };
 const TRANSPARENT_BLACK: Rgba = [0, 0, 0, 0];
 const IDENTITY_MATRIX: Matrix2D = [1, 0, 0, 1, 0, 0];
+const GLOBAL_COMPOSITE_OPERATIONS = new Set<string>([
+  "clear",
+  "copy",
+  "source-over",
+  "source-in",
+  "source-out",
+  "source-atop",
+  "destination-over",
+  "destination-in",
+  "destination-out",
+  "destination-atop",
+  "lighter",
+  "xor",
+  "multiply",
+  "screen",
+  "overlay",
+  "darken",
+  "lighten",
+  "color-dodge",
+  "color-burn",
+  "hard-light",
+  "soft-light",
+  "difference",
+  "exclusion",
+  "hue",
+  "saturation",
+  "color",
+  "luminosity"
+]);
 
 export class CanvasPath2D {
   readonly #commands: PathCommand[] = [];
@@ -414,14 +484,14 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #currentPath = new CanvasPath2D();
   #stateStack: CanvasState[] = [];
   #lineDash: number[] = [];
+  #globalAlpha = 1;
+  #globalCompositeOperation: GlobalCompositeOperation = "source-over";
   strokeStyle = "#000000";
   fillRule: CanvasFillRule = "nonzero";
-  globalAlpha = 1;
   lineWidth = 1;
   lineCap: CanvasLineCap = "butt";
   lineJoin: CanvasLineJoin = "miter";
   miterLimit = 10;
-  globalCompositeOperation = "source-over";
   font = "10px sans-serif";
   filter = "none";
   lineDashOffset = 0;
@@ -446,6 +516,34 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
     this.#fillStyle = color.serialized;
     this.#fillColor = color.rgba;
+  }
+
+  get globalAlpha(): number {
+    return this.#globalAlpha;
+  }
+
+  set globalAlpha(value: number) {
+    const alpha = Number(value);
+
+    if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
+      return;
+    }
+
+    this.#globalAlpha = alpha;
+  }
+
+  get globalCompositeOperation(): string {
+    return this.#globalCompositeOperation;
+  }
+
+  set globalCompositeOperation(value: string) {
+    const operation = String(value);
+
+    if (!GLOBAL_COMPOSITE_OPERATIONS.has(operation)) {
+      return;
+    }
+
+    this.#globalCompositeOperation = operation as GlobalCompositeOperation;
   }
 
   save(): void {
@@ -493,7 +591,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   }
 
   clearRect(x: number, y: number, width: number, height: number): void {
-    this.#fillTransformedRect(x, y, width, height, TRANSPARENT_BLACK);
+    this.#clearTransformedRect(x, y, width, height);
   }
 
   fillRect(x: number, y: number, width: number, height: number): void {
@@ -502,7 +600,14 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
   fill(path: CanvasPath2D = this.#currentPath, _fillRule: CanvasFillRule = this.fillRule): void {
     for (const polygon of pathToPolygons(path, this.#transform)) {
-      fillPolygon(this.getPixels(), this.canvas.width, this.canvas.height, polygon, this.#effectiveFillColor());
+      fillPolygon(
+        this.getPixels(),
+        this.canvas.width,
+        this.canvas.height,
+        polygon,
+        this.#effectiveFillColor(),
+        this.#globalCompositeOperation
+      );
     }
   }
 
@@ -629,25 +734,63 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     // Clipping is not implemented yet; pdf.js calls this only for clipped paths.
   }
 
-  #fillTransformedRect(x: number, y: number, width: number, height: number, color: Rgba): void {
+  #clearTransformedRect(x: number, y: number, width: number, height: number): void {
     if (![x, y, width, height].every(Number.isFinite)) {
       return;
     }
 
     if (isIdentityMatrix(this.#transform)) {
-      this.fillRectPixels(x, y, width, height, color);
+      this.fillRectPixels(x, y, width, height, TRANSPARENT_BLACK);
       return;
     }
 
     const path = new CanvasPath2D();
     path.rect(x, y, width, height);
     for (const polygon of pathToPolygons(path, this.#transform)) {
-      fillPolygon(this.getPixels(), this.canvas.width, this.canvas.height, polygon, color);
+      clearPolygon(this.getPixels(), this.canvas.width, this.canvas.height, polygon);
+    }
+  }
+
+  #fillTransformedRect(x: number, y: number, width: number, height: number, color: Rgba): void {
+    if (![x, y, width, height].every(Number.isFinite)) {
+      return;
+    }
+
+    if (isIdentityMatrix(this.#transform)) {
+      this.#fillRectPixels(x, y, width, height, color);
+      return;
+    }
+
+    const path = new CanvasPath2D();
+    path.rect(x, y, width, height);
+    for (const polygon of pathToPolygons(path, this.#transform)) {
+      fillPolygon(this.getPixels(), this.canvas.width, this.canvas.height, polygon, color, this.#globalCompositeOperation);
+    }
+  }
+
+  #fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void {
+    if (this.#globalCompositeOperation === "source-over" && color[3] === 255) {
+      this.fillRectPixels(x, y, width, height, color);
+      return;
+    }
+
+    const x2 = x + width;
+    const y2 = y + height;
+    const left = clamp(Math.trunc(Math.min(x, x2)), 0, this.canvas.width);
+    const top = clamp(Math.trunc(Math.min(y, y2)), 0, this.canvas.height);
+    const right = clamp(Math.trunc(Math.max(x, x2)), 0, this.canvas.width);
+    const bottom = clamp(Math.trunc(Math.max(y, y2)), 0, this.canvas.height);
+    const pixels = this.getPixels();
+
+    for (let py = top; py < bottom; py += 1) {
+      for (let px = left; px < right; px += 1) {
+        compositePixel(pixels, (py * this.canvas.width + px) * 4, color, this.#globalCompositeOperation);
+      }
     }
   }
 
   #effectiveFillColor(): Rgba {
-    const alpha = clamp(this.globalAlpha, 0, 1);
+    const alpha = this.#globalAlpha;
 
     if (alpha === 1) {
       return this.#fillColor;
@@ -771,7 +914,8 @@ function fillPolygon(
   width: number,
   height: number,
   polygon: readonly Point[],
-  color: Rgba
+  color: Rgba,
+  operation: GlobalCompositeOperation
 ): void {
   const xs = polygon.map((point) => point.x);
   const ys = polygon.map((point) => point.y);
@@ -787,12 +931,151 @@ function fillPolygon(
       }
 
       const offset = (y * width + x) * 4;
-      pixels[offset] = color[0];
-      pixels[offset + 1] = color[1];
-      pixels[offset + 2] = color[2];
-      pixels[offset + 3] = color[3];
+      compositePixel(pixels, offset, color, operation);
     }
   }
+}
+
+function clearPolygon(pixels: Uint8ClampedArray, width: number, height: number, polygon: readonly Point[]): void {
+  const xs = polygon.map((point) => point.x);
+  const ys = polygon.map((point) => point.y);
+  const left = clamp(Math.floor(Math.min(...xs)), 0, width);
+  const right = clamp(Math.ceil(Math.max(...xs)), 0, width);
+  const top = clamp(Math.floor(Math.min(...ys)), 0, height);
+  const bottom = clamp(Math.ceil(Math.max(...ys)), 0, height);
+
+  for (let y = top; y < bottom; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      if (!isPointInPolygon(x + 0.5, y + 0.5, polygon)) {
+        continue;
+      }
+
+      const offset = (y * width + x) * 4;
+      pixels[offset] = 0;
+      pixels[offset + 1] = 0;
+      pixels[offset + 2] = 0;
+      pixels[offset + 3] = 0;
+    }
+  }
+}
+
+function compositePixel(
+  pixels: Uint8ClampedArray,
+  offset: number,
+  source: Rgba,
+  operation: GlobalCompositeOperation
+): void {
+  const sourceAlpha = source[3] / 255;
+  const destinationAlpha = pixels[offset + 3] / 255;
+  const sourceRed = (source[0] / 255) * sourceAlpha;
+  const sourceGreen = (source[1] / 255) * sourceAlpha;
+  const sourceBlue = (source[2] / 255) * sourceAlpha;
+  const destinationRed = (pixels[offset] / 255) * destinationAlpha;
+  const destinationGreen = (pixels[offset + 1] / 255) * destinationAlpha;
+  const destinationBlue = (pixels[offset + 2] / 255) * destinationAlpha;
+  let sourceFactor = 1;
+  let destinationFactor = 1 - sourceAlpha;
+
+  switch (operation) {
+    case "clear":
+      writePremultipliedPixel(pixels, offset, 0, 0, 0, 0);
+      return;
+    case "copy":
+      destinationFactor = 0;
+      break;
+    case "source-in":
+      sourceFactor = destinationAlpha;
+      destinationFactor = 0;
+      break;
+    case "source-out":
+      sourceFactor = 1 - destinationAlpha;
+      destinationFactor = 0;
+      break;
+    case "source-atop":
+      sourceFactor = destinationAlpha;
+      destinationFactor = 1 - sourceAlpha;
+      break;
+    case "destination-over":
+      sourceFactor = 1 - destinationAlpha;
+      destinationFactor = 1;
+      break;
+    case "destination-in":
+      sourceFactor = 0;
+      destinationFactor = sourceAlpha;
+      break;
+    case "destination-out":
+      sourceFactor = 0;
+      destinationFactor = 1 - sourceAlpha;
+      break;
+    case "destination-atop":
+      sourceFactor = 1 - destinationAlpha;
+      destinationFactor = sourceAlpha;
+      break;
+    case "lighter":
+      writePremultipliedPixel(
+        pixels,
+        offset,
+        clamp(sourceRed + destinationRed, 0, 1),
+        clamp(sourceGreen + destinationGreen, 0, 1),
+        clamp(sourceBlue + destinationBlue, 0, 1),
+        clamp(sourceAlpha + destinationAlpha, 0, 1)
+      );
+      return;
+    case "xor":
+      sourceFactor = 1 - destinationAlpha;
+      destinationFactor = 1 - sourceAlpha;
+      break;
+    case "multiply":
+    case "screen":
+    case "overlay":
+    case "darken":
+    case "lighten":
+    case "color-dodge":
+    case "color-burn":
+    case "hard-light":
+    case "soft-light":
+    case "difference":
+    case "exclusion":
+    case "hue":
+    case "saturation":
+    case "color":
+    case "luminosity":
+      // Advanced blend modes are accepted by the API; rendering currently falls back to source-over.
+      break;
+  }
+
+  writePremultipliedPixel(
+    pixels,
+    offset,
+    sourceRed * sourceFactor + destinationRed * destinationFactor,
+    sourceGreen * sourceFactor + destinationGreen * destinationFactor,
+    sourceBlue * sourceFactor + destinationBlue * destinationFactor,
+    sourceAlpha * sourceFactor + destinationAlpha * destinationFactor
+  );
+}
+
+function writePremultipliedPixel(
+  pixels: Uint8ClampedArray,
+  offset: number,
+  premultipliedRed: number,
+  premultipliedGreen: number,
+  premultipliedBlue: number,
+  alpha: number
+): void {
+  const clampedAlpha = clamp(alpha, 0, 1);
+
+  if (clampedAlpha === 0) {
+    pixels[offset] = 0;
+    pixels[offset + 1] = 0;
+    pixels[offset + 2] = 0;
+    pixels[offset + 3] = 0;
+    return;
+  }
+
+  pixels[offset] = Math.round((clamp(premultipliedRed, 0, clampedAlpha) / clampedAlpha) * 255);
+  pixels[offset + 1] = Math.round((clamp(premultipliedGreen, 0, clampedAlpha) / clampedAlpha) * 255);
+  pixels[offset + 2] = Math.round((clamp(premultipliedBlue, 0, clampedAlpha) / clampedAlpha) * 255);
+  pixels[offset + 3] = Math.round(clampedAlpha * 255);
 }
 
 function isPointInPolygon(x: number, y: number, polygon: readonly Point[]): boolean {

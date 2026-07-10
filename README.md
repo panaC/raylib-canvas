@@ -62,10 +62,6 @@ The implemented API is intentionally partial. The current public surface include
 - `new Canvas(width, height)`;
 - `canvas.width`, `canvas.height`, `canvas.getContext("2d")`;
 - `canvas.toBlob(callback, "image/png")` and `canvas.toDataURL("image/png")`;
-- `ctx.canvas`, `ctx.fillStyle`, `ctx.globalAlpha`, `ctx.save()`, `ctx.restore()`;
-- `ctx.fillRect()`, `ctx.clearRect()`, `ctx.getImageData()`;
-- basic path drawing through `beginPath()`, `moveTo()`, `lineTo()`, `rect()`, `closePath()`, and `fill()`;
-- basic transforms through `transform()`, `setTransform()`, `resetTransform()`, `getTransform()`, `scale()`, and `translate()`;
 - `CanvasPath2D`, `CanvasImageData`, and `CanvasTransformMatrix` helpers used by tests and the pdf.js harness.
 
 See [docs/API_MATRIX.md](docs/API_MATRIX.md) for the broader Canvas 2D API checklist.
