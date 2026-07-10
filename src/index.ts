@@ -1,4 +1,5 @@
 import { PNG } from "pngjs";
+import { JavascriptCanvasRenderer } from "./renderers/javascript";
 
 export interface CreateCanvasOptions {
   renderer?: CanvasRenderer;
@@ -377,7 +378,7 @@ export class Canvas {
     assertPositiveInteger(width, "width");
     assertPositiveInteger(height, "height");
 
-    const renderer = options.renderer ?? new SoftwareCanvasRenderer(width, height);
+    const renderer = options.renderer ?? new JavascriptCanvasRenderer(width, height);
 
     if (renderer.width !== width || renderer.height !== height) {
       throw new Error("renderer dimensions must match canvas dimensions");
@@ -664,50 +665,6 @@ export class Canvas2DRenderingContext implements Canvas2DContext {
   }
 }
 
-export class SoftwareCanvasRenderer implements CanvasRenderer {
-  readonly pixels: Uint8ClampedArray;
-
-  constructor(
-    readonly width: number,
-    readonly height: number
-  ) {
-    assertPositiveInteger(width, "width");
-    assertPositiveInteger(height, "height");
-    this.pixels = new Uint8ClampedArray(width * height * 4);
-  }
-
-  fillRect(x: number, y: number, width: number, height: number, color: Rgba): void {
-    if (![x, y, width, height].every(Number.isFinite)) {
-      return;
-    }
-
-    const x2 = x + width;
-    const y2 = y + height;
-    const left = clamp(Math.trunc(Math.min(x, x2)), 0, this.width);
-    const top = clamp(Math.trunc(Math.min(y, y2)), 0, this.height);
-    const right = clamp(Math.trunc(Math.max(x, x2)), 0, this.width);
-    const bottom = clamp(Math.trunc(Math.max(y, y2)), 0, this.height);
-
-    if (right <= left || bottom <= top) {
-      return;
-    }
-
-    for (let py = top; py < bottom; py += 1) {
-      for (let px = left; px < right; px += 1) {
-        const offset = (py * this.width + px) * 4;
-        this.pixels[offset] = color[0];
-        this.pixels[offset + 1] = color[1];
-        this.pixels[offset + 2] = color[2];
-        this.pixels[offset + 3] = color[3];
-      }
-    }
-  }
-
-  getPixels(): Uint8ClampedArray {
-    return this.pixels;
-  }
-}
-
 type Point = { readonly x: number; readonly y: number };
 
 function pathToPolygons(path: CanvasPath2D, transform: Matrix2D): Point[][] {
@@ -864,7 +821,7 @@ function isPointInPolygon(x: number, y: number, polygon: readonly Point[]): bool
   return inside;
 }
 
-export { SoftwareCanvasRenderer as Javascript2DContextCanvasRenderer };
+export { JavascriptCanvasRenderer } from "./renderers/javascript";
 export {
   createRaylibCanvasRenderer,
   loadRaylibCanvasModule,
