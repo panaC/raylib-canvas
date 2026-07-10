@@ -6,7 +6,11 @@ import { WPT_REPORTS, WPT_SHIM_OUTPUT, WPT_SMOKE_TESTS_FILE } from "./wpt-config
 const suite = readOption("--suite") ?? "smoke";
 const wptRoot = readOption("--wpt-root") ?? process.env.WPT_ROOT ?? ".wpt-upstream";
 const browser = process.env.WPT_BROWSER ?? "chrome";
-const browserBinary = process.env.WPT_BINARY ?? await findPlaywrightChromiumBinary(browser);
+const shouldInstallBrowser = isEnabled(process.env.WPT_INSTALL_BROWSER);
+const shouldInstallWebdriver = isEnabled(process.env.WPT_INSTALL_WEBDRIVER);
+const browserBinary = shouldInstallBrowser
+  ? undefined
+  : process.env.WPT_BINARY ?? await findPlaywrightChromiumBinary(browser);
 const python = process.env.PYTHON ?? "python";
 
 if (suite !== "smoke" && suite !== "full") {
@@ -31,6 +35,18 @@ const args = [
   "--log-wptreport",
   reportPath
 ];
+
+if (process.env.WPT_CHANNEL) {
+  args.push("--channel", process.env.WPT_CHANNEL);
+}
+
+if (shouldInstallBrowser) {
+  args.push("--install-browser");
+}
+
+if (shouldInstallWebdriver) {
+  args.push("--install-webdriver");
+}
 
 if (browserBinary) {
   args.push("--binary", browserBinary);
@@ -58,6 +74,10 @@ if (typeof result.status === "number") {
 function readOption(name) {
   const index = process.argv.indexOf(name);
   return index === -1 ? undefined : process.argv[index + 1];
+}
+
+function isEnabled(value) {
+  return value === "1" || value === "true";
 }
 
 function assertExecutableWptCheckout(root) {

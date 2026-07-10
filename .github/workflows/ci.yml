@@ -11,6 +11,9 @@ permissions:
 
 env:
   PYTHON: python3
+  WPT_CHANNEL: stable
+  WPT_INSTALL_BROWSER: "1"
+  WPT_INSTALL_WEBDRIVER: "1"
 
 jobs:
   build-and-test:
@@ -33,6 +36,8 @@ jobs:
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
+        env:
+          NODE_OPTIONS: --trace-deprecation
         with:
           node-version: 22
           cache: npm

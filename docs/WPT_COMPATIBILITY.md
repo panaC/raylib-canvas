@@ -81,4 +81,8 @@ WPT runner environment overrides:
   `chrome`/`chromium`, the runner uses Playwright's installed Chromium when
   available.
 - `WPT_WEBDRIVER_BINARY` points WPT at a specific WebDriver binary.
+- `WPT_CHANNEL` forwards a browser release channel such as `stable` to WPT.
+- `WPT_INSTALL_BROWSER=1` asks WPT to install the browser for the run.
+- `WPT_INSTALL_WEBDRIVER=1` asks WPT to install a matching WebDriver for the
+  run.
 - `PYTHON` changes the Python executable used to launch WPT.
