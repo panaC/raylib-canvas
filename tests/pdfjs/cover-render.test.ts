@@ -1,18 +1,32 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
-import { Canvas, CanvasPath2D, type Canvas2DContext } from "../../src/index";
+import {
+  Canvas,
+  CanvasPath2D,
+  RaylibCanvasRenderer,
+  loadRaylibCanvasModule,
+  type Canvas2DContext,
+  type RaylibCanvasWasmModule
+} from "../../src/index";
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const PDF_FIXTURE_PATH = join(TEST_DIR, "compressed.tracemonkey-pldi-09.pdf");
-const COVER_PNG_PATH = join(TEST_DIR, "compressed.tracemonkey-pldi-09-cover.png");
 
 type CanvasAndContext = {
   canvas: Canvas | null;
   context: Canvas2DContext | null;
+  renderer: RaylibCanvasRenderer | null;
 };
+
+const USE_RAYLIB_RENDERER = process.env.RAYLIB_CANVAS_RENDERER === "raylib";
+const COVER_PNG_PATH = join(
+  TEST_DIR,
+  USE_RAYLIB_RENDERER ? "compressed.tracemonkey-pldi-09-cover-raylib.png" : "compressed.tracemonkey-pldi-09-cover.png"
+);
+let raylibModule: RaylibCanvasWasmModule | undefined;
 
 function toPngBytes(canvas: Canvas): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
@@ -44,29 +58,60 @@ function countNonWhitePixels(png: PNG): number {
   return pixels;
 }
 
+function createCanvasAndContext(width: number, height: number): CanvasAndContext {
+  const canvasWidth = Math.ceil(width);
+  const canvasHeight = Math.ceil(height);
+  const renderer = createRenderer(canvasWidth, canvasHeight);
+  const canvas = new Canvas(canvasWidth, canvasHeight, renderer ? { renderer } : {});
+
+  return {
+    canvas,
+    context: canvas.getContext("2d"),
+    renderer
+  };
+}
+
+function createRenderer(width: number, height: number): RaylibCanvasRenderer | undefined {
+  if (!USE_RAYLIB_RENDERER) {
+    return undefined;
+  }
+
+  if (!raylibModule) {
+    throw new Error("raylib module was not loaded before creating a pdf.js canvas");
+  }
+
+  return new RaylibCanvasRenderer(width, height, raylibModule);
+}
+
 class RaylibCanvasFactory {
   create(width: number, height: number): CanvasAndContext {
-    const canvas = new Canvas(Math.ceil(width), Math.ceil(height));
-    return {
-      canvas,
-      context: canvas.getContext("2d")
-    };
+    return createCanvasAndContext(width, height);
   }
 
   reset(canvasAndContext: CanvasAndContext, width: number, height: number): void {
-    const canvas = new Canvas(Math.ceil(width), Math.ceil(height));
-    canvasAndContext.canvas = canvas;
-    canvasAndContext.context = canvas.getContext("2d");
+    canvasAndContext.renderer?.dispose();
+    const reset = createCanvasAndContext(width, height);
+    canvasAndContext.canvas = reset.canvas;
+    canvasAndContext.context = reset.context;
+    canvasAndContext.renderer = reset.renderer;
   }
 
   destroy(canvasAndContext: CanvasAndContext): void {
+    canvasAndContext.renderer?.dispose();
     canvasAndContext.canvas = null;
     canvasAndContext.context = null;
+    canvasAndContext.renderer = null;
   }
 }
 
 describe("pdfjs-dist cover rendering", () => {
-  it("extracts the first fixture PDF page to a PNG using the stub canvas", async () => {
+  beforeAll(async () => {
+    if (USE_RAYLIB_RENDERER) {
+      raylibModule = await loadRaylibCanvasModule();
+    }
+  });
+
+  it("extracts the first fixture PDF page to a PNG using the selected canvas backend", async () => {
     const globals = globalThis as typeof globalThis & { Path2D?: unknown };
     const previousPath2D = globals.Path2D;
     globals.Path2D = CanvasPath2D;
@@ -85,14 +130,15 @@ describe("pdfjs-dist cover rendering", () => {
       const pdf = await loadingTask.promise;
       const page = await pdf.getPage(1);
       const viewport = page.getViewport({ scale: 1 });
-      const canvas = new Canvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+      const canvasAndContext = createCanvasAndContext(viewport.width, viewport.height);
 
       await page.render({
-        canvasContext: canvas.getContext("2d") as unknown as CanvasRenderingContext2D,
+        canvasContext: canvasAndContext.context as unknown as CanvasRenderingContext2D,
         viewport
       }).promise;
 
-      const pngBytes = await toPngBytes(canvas);
+      const pngBytes = await toPngBytes(canvasAndContext.canvas!);
+      canvasAndContext.renderer?.dispose();
       await writeFile(COVER_PNG_PATH, pngBytes);
       const png = PNG.sync.read(Buffer.from(pngBytes));
 

@@ -28,6 +28,21 @@ shim patches browser
 `HTMLCanvasElement` methods so the upstream `.html` test pages exercise this
 package's `Canvas` implementation.
 
+The optional raylib WASM backend can run the same smoke manifest with:
+
+```sh
+npm run build:raylib-wasm
+npm run test:wpt:raylib
+```
+
+For that lane, `build:raylib-wasm` uses the Debian Emscripten Docker build by
+default and emits both the normal Emscripten module and a single-file WPT
+preload. Users with a host Emscripten install can run
+`npm run build:raylib-wasm:native` to produce the same artifacts without
+Docker. `build-wpt-shim` prepends the preload to the injected shim when
+`RAYLIB_CANVAS_RENDERER=raylib`, so WPT pages receive a ready
+`__raylibCanvasWasmModule` before any patched canvas context is created.
+
 The smoke suite is listed in `tests/wpt/canvas-smoke-tests.txt`. It currently
 covers official upstream files for:
 

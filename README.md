@@ -102,7 +102,38 @@ const canvas = await createCanvas(800, 450, { renderer });
 
 ### raylib renderer
 
-The raylib backend is incoming. The intended shape is to keep `createCanvas()` and the 2D context API stable while swapping the software renderer for a raylib-oriented implementation, likely through a native, WASM, or process-backed bridge.
+The raylib backend is available as an opt-in WASM renderer. The public canvas
+facade stays the same: create the raylib renderer, pass it through the existing
+renderer injection option, and keep using the 2D context API normally.
+
+```ts
+import { createCanvas, createRaylibCanvasRenderer } from "raylib-canvas";
+
+const renderer = await createRaylibCanvasRenderer(800, 450);
+const canvas = await createCanvas(800, 450, { renderer });
+```
+
+Initialize the pinned raylib checkout, then build the WASM module with
+Emscripten before using the default raylib loader. The default path builds
+inside a Debian Docker container and writes the WASM artifacts back to
+`dist/native`:
+
+```sh
+npm run init:raylib
+npm run build:raylib-wasm
+```
+
+If you already have Emscripten available on your host `PATH`, you can use the
+same compiler flags without Docker:
+
+```sh
+npm run build:raylib-wasm:native
+```
+
+The backend vendors raylib 6.0 under `vendor/raylib`, pinned to tag `6.0`
+at commit `dbc56a87da87d973a9c5baa4e7438a9d20121d28`. The C bridge is
+compiled with raylib's `PLATFORM_MEMORY` and `GRAPHICS_API_OPENGL_SOFTWARE`
+flags and exposes the live RGBA pixel buffer expected by `CanvasRenderer`.
 
 ## Tests
 
@@ -124,10 +155,18 @@ Test scripts:
 
 | Command | Purpose |
 | --- | --- |
+| `npm run init:raylib` | Clones raylib 6.0 into ignored `vendor/raylib` for the optional WASM backend. |
 | `npm run test:unit` | Fast Vitest coverage for API behavior and PNG encoding. |
 | `npm run test:pdfjs` | Renders a real PDF page through `pdfjs-dist` and this canvas implementation. |
 | `npm run test:wpt` | Runs the current green upstream Canvas WPT smoke suite through the browser shim. |
 | `npm run test:e2e` | Runs the browser demo with Playwright and samples rendered pixels. |
+| `npm run build:raylib-wasm` | Builds the optional raylib WASM backend in a Debian Emscripten Docker container. |
+| `npm run build:raylib-wasm:docker` | Same Docker build path as `build:raylib-wasm`. |
+| `npm run build:raylib-wasm:native` | Builds the same WASM artifacts with a host Emscripten install on `PATH`. |
+| `npm run test:raylib` | Builds and runs the raylib unit, pdf.js, and WPT smoke lanes. |
+| `npm run test:unit:raylib` | Runs unit tests through the opt-in raylib renderer. |
+| `npm run test:pdfjs:raylib` | Renders the pdf.js fixture through the opt-in raylib renderer. |
+| `npm run test:wpt:raylib` | Runs the WPT smoke suite with the raylib WASM preload. |
 | `npm run wpt:setup` | Fetches the pinned upstream WPT checkout. |
 | `npm run wpt:full` | Runs the full upstream `html/canvas` WPT tree. Failures are expected until more Canvas 2D APIs land. |
 | `npm run wpt:progress` | Summarizes WPT coverage from reports under `test-results/wpt/`. |
@@ -144,10 +183,12 @@ Latest checked WPT smoke report: [test-results/wpt/smoke-report.json](test-resul
 - 0 unexpected subtests/results.
 - Covered areas: context creation/sharing, `fillRect()`, `clearRect()`, `fillStyle`, and `getImageData()`.
 
-The pdf.js integration test renders page 1 of [tests/pdfjs/compressed.tracemonkey-pldi-09.pdf](tests/pdfjs/compressed.tracemonkey-pldi-09.pdf) through `pdfjs-dist`, using this package as the canvas factory. The generated cover image is written to [tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png), and the test asserts:
+The pdf.js integration test renders page 1 of [tests/pdfjs/compressed.tracemonkey-pldi-09.pdf](tests/pdfjs/compressed.tracemonkey-pldi-09.pdf) through `pdfjs-dist`, using this package as the canvas factory. The JavaScript renderer writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png), and the raylib WASM renderer writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png). Each lane asserts:
 
 - PNG signature is valid.
 - Image size is `612x792`.
 - Rendered output contains more than 1,000 non-white pixels.
 
-![pdf.js cover rendered through raylib-canvas](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png)
+| JavaScript renderer | raylib WASM renderer |
+| --- | --- |
+| ![pdf.js cover rendered through the JavaScript renderer](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png) | ![pdf.js cover rendered through the raylib WASM renderer](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png) |

@@ -21,11 +21,17 @@ await Promise.all([
   esbuild.build({
     ...shared,
     format: "esm",
+    define: {
+      RAYLIB_CANVAS_IMPORT_META_URL: "import.meta.url"
+    },
     outfile: "dist/index.js"
   }),
   esbuild.build({
     ...shared,
     format: "cjs",
+    define: {
+      RAYLIB_CANVAS_IMPORT_META_URL: "undefined"
+    },
     outfile: "dist/index.cjs"
   })
 ]);

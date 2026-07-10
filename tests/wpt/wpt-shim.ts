@@ -1,4 +1,4 @@
-import { Canvas, type CanvasImageData } from "../../src/index";
+import { Canvas, RaylibCanvasRenderer, type CanvasImageData, type RaylibCanvasWasmModule } from "../../src/index";
 
 type Raylib2DContext = NonNullable<ReturnType<Canvas["getContext"]>>;
 
@@ -7,10 +7,12 @@ interface BackingCanvas {
   readonly height: number;
   readonly canvas: Canvas;
   readonly context: Raylib2DContext;
+  readonly renderer?: RaylibCanvasRenderer;
 }
 
 const backings = new WeakMap<HTMLCanvasElement, BackingCanvas>();
 const wrappers = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
+const rendererBackend = process.env.RAYLIB_CANVAS_RENDERER;
 
 const originalSetAttribute = Element.prototype.setAttribute;
 const originalRemoveAttribute = Element.prototype.removeAttribute;
@@ -151,14 +153,16 @@ function getOrCreateBacking(domCanvas: HTMLCanvasElement): BackingCanvas {
     return existing;
   }
 
-  const canvas = new Canvas(width, height);
+  const renderer = createRenderer(width, height);
+  const canvas = new Canvas(width, height, renderer ? { renderer } : {});
   const context = canvas.getContext("2d");
-  const backing = { width, height, canvas, context };
+  const backing = { width, height, canvas, context, renderer };
   backings.set(domCanvas, backing);
   return backing;
 }
 
 function resetBacking(domCanvas: HTMLCanvasElement): void {
+  backings.get(domCanvas)?.renderer?.dispose();
   backings.delete(domCanvas);
 }
 
@@ -203,4 +207,19 @@ function patchCanvasDimension(property: "width" | "height"): void {
 function isCanvasDimensionAttribute(name: string): boolean {
   const normalized = name.toLowerCase();
   return normalized === "width" || normalized === "height";
+}
+
+function createRenderer(width: number, height: number): RaylibCanvasRenderer | undefined {
+  if (rendererBackend !== "raylib") {
+    return undefined;
+  }
+
+  const module = (globalThis as typeof globalThis & { __raylibCanvasWasmModule?: RaylibCanvasWasmModule })
+    .__raylibCanvasWasmModule;
+
+  if (!module) {
+    throw new Error("RAYLIB_CANVAS_RENDERER=raylib requires __raylibCanvasWasmModule to be preloaded.");
+  }
+
+  return new RaylibCanvasRenderer(width, height, module);
 }

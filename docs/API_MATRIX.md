@@ -16,6 +16,12 @@
 - [WHATWG HTML - Shadows](https://html.spec.whatwg.org/multipage/canvas.html#shadows)
 - [WHATWG HTML - Filters](https://html.spec.whatwg.org/multipage/canvas.html#filters)
 
+## renderer backend status
+
+- JavaScript software renderer: default backend.
+- raylib 6.0 WASM renderer: opt-in backend through `createRaylibCanvasRenderer()`.
+  It currently targets the same Canvas API coverage as the JavaScript renderer.
+
 | API method name | canvas official web reference | status (waiting/not-planned/partial/done) |
 | --- | --- | --- |
 | `canvas` | [WHATWG CanvasRenderingContext2D.canvas](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-canvas-dev) | waiting |

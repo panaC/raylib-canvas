@@ -865,6 +865,18 @@ function isPointInPolygon(x: number, y: number, polygon: readonly Point[]): bool
 }
 
 export { SoftwareCanvasRenderer as Javascript2DContextCanvasRenderer };
+export {
+  createRaylibCanvasRenderer,
+  loadRaylibCanvasModule,
+  RaylibCanvasRenderer
+} from "./renderers/raylib";
+export type {
+  RaylibCanvasModuleLoadOptions,
+  RaylibCanvasRendererOptions,
+  RaylibCanvasWasmModule,
+  RaylibCanvasWasmModuleFactory,
+  RaylibCanvasWasmModuleFactoryOptions
+} from "./renderers/raylib";
 
 export class PngJsEncoder implements PngEncoder {
   encode(image: PngImage): Uint8Array {
