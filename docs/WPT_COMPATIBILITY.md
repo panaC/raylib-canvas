@@ -54,6 +54,7 @@ covers official upstream files for:
   errors, negative-size reads, and non-finite argument errors
 - `scale()` basic, large, repeated, negative, zero, and non-finite transforms
 - `rotate()` direction, radians, wraparound, zero, and non-finite transforms
+- `translate()` basic and non-finite transforms
 
 Run the full upstream Canvas tree with:
 

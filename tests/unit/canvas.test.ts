@@ -162,6 +162,68 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 1, 1)).toEqual([0, 128, 0, 255]);
   });
 
+  it("adds translation to the current transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(2);
+    expect(transform.f).toBe(3);
+  });
+
+  it("post-multiplies translation with the existing transform", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.scale(2, 3);
+    ctx.translate(5, 7);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(2);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(3);
+    expect(transform.e).toBe(10);
+    expect(transform.f).toBe(21);
+  });
+
+  it("ignores non-finite translation offsets", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.translate(2, 3);
+    ctx.translate(Number.NaN, 1);
+    ctx.translate(1, Number.POSITIVE_INFINITY);
+    const transform = ctx.getTransform();
+
+    expect(transform.a).toBe(1);
+    expect(transform.b).toBe(0);
+    expect(transform.c).toBe(0);
+    expect(transform.d).toBe(1);
+    expect(transform.e).toBe(2);
+    expect(transform.f).toBe(3);
+  });
+
+  it("applies translation to filled rectangle rendering", async () => {
+    const canvas = await createTestCanvas(6, 6);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.translate(2, 3);
+    ctx.fillRect(1, 1, 2, 2);
+
+    expect(pixelAt(ctx, 2, 3)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 3, 4)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 4, 5)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 5, 5)).toEqual([0, 0, 0, 0]);
+  });
+
   it("adds rotation to the current transform", async () => {
     const canvas = await createTestCanvas(4, 4);
     const ctx = canvas.getContext("2d");
