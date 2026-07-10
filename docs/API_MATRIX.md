@@ -57,7 +57,7 @@
 | `fontVariantCaps` | [WHATWG fontVariantCaps](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fontvariantcaps-dev) | done |
 | `textRendering` | [WHATWG textRendering](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-textrendering-dev) | done |
 | `fillStyle` | [WHATWG fillStyle](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fillstyle-dev) | partial |
-| `strokeStyle` | [WHATWG strokeStyle](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokestyle-dev) | waiting |
+| `strokeStyle` | [WHATWG strokeStyle](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokestyle-dev) | partial |
 | `createLinearGradient(x0, y0, x1, y1)` | [WHATWG createLinearGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createlineargradient-dev) | waiting |
 | `createRadialGradient(...)` | [WHATWG createRadialGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createradialgradient-dev) | waiting |
 | `createConicGradient(startAngle, x, y)` | [WHATWG createConicGradient](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createconicgradient-dev) | waiting |
@@ -69,7 +69,7 @@
 | `filter` | [WHATWG filter](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-filter-dev) | waiting |
 | `clearRect(x, y, w, h)` | [WHATWG clearRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-clearrect-dev) | partial |
 | `fillRect(x, y, w, h)` | [WHATWG fillRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fillrect-dev) | partial |
-| `strokeRect(x, y, w, h)` | [WHATWG strokeRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokerect-dev) | waiting |
+| `strokeRect(x, y, w, h)` | [WHATWG strokeRect](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokerect-dev) | partial |
 | `beginPath()` | [WHATWG beginPath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-beginpath-dev) | waiting |
 | `closePath()` | [WHATWG closePath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-closepath-dev) | waiting |
 | `moveTo(x, y)` | [WHATWG moveTo](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-moveto-dev) | waiting |
@@ -82,14 +82,14 @@
 | `arc(x, y, radius, startAngle, endAngle, counterclockwise)` | [WHATWG arc](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-arc-dev) | waiting |
 | `ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle, counterclockwise)` | [WHATWG ellipse](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ellipse-dev) | waiting |
 | `fill(pathOrRule?)` | [WHATWG fill](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fill-dev) | waiting |
-| `stroke(path?)` | [WHATWG stroke](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroke-dev) | waiting |
+| `stroke(path?)` | [WHATWG stroke](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroke-dev) | partial |
 | `clip(pathOrRule?)` | [WHATWG clip](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-clip-dev) | waiting |
 | `isPointInPath(...)` | [WHATWG isPointInPath](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ispointinpath-dev) | waiting |
 | `isPointInStroke(...)` | [WHATWG isPointInStroke](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-ispointinstroke-dev) | waiting |
 | `drawFocusIfNeeded(...)` | [WHATWG drawFocusIfNeeded](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-drawfocusifneeded-dev) | not-planned |
 | `scrollPathIntoView(...)` | [WHATWG scrollPathIntoView](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-scrollpathintoview-dev) | not-planned |
 | `fillText(text, x, y, maxWidth?)` | [WHATWG fillText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-filltext-dev) | waiting |
-| `strokeText(text, x, y, maxWidth?)` | [WHATWG strokeText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroketext-dev) | waiting |
+| `strokeText(text, x, y, maxWidth?)` | [WHATWG strokeText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroketext-dev) | partial |
 | `measureText(text)` | [WHATWG measureText](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-measuretext-dev) | waiting |
 | `drawImage(...)` | [WHATWG drawImage](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-drawimage-dev) | waiting |
 | `createImageData(...)` | [WHATWG createImageData](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createimagedata-dev) | waiting |

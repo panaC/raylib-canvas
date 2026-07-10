@@ -5,6 +5,9 @@ html/canvas/element/drawing-rectangles-to-the-canvas/2d.fillRect.basic.html
 html/canvas/element/drawing-rectangles-to-the-canvas/2d.fillRect.negative.html
 html/canvas/element/drawing-rectangles-to-the-canvas/2d.fillRect.nonfinite.html
 html/canvas/element/drawing-rectangles-to-the-canvas/2d.fillRect.zero.html
+html/canvas/element/drawing-rectangles-to-the-canvas/2d.strokeRect.basic.html
+html/canvas/element/drawing-rectangles-to-the-canvas/2d.strokeRect.nonfinite.html
+html/canvas/element/drawing-rectangles-to-the-canvas/2d.strokeRect.path.html
 html/canvas/element/drawing-rectangles-to-the-canvas/2d.clearRect.basic.html
 html/canvas/element/drawing-rectangles-to-the-canvas/2d.clearRect.negative.html
 html/canvas/element/drawing-rectangles-to-the-canvas/2d.clearRect.nonfinite.html
@@ -38,6 +41,7 @@ html/canvas/element/compositing/2d.composite.solid.source-over.html
 html/canvas/element/compositing/2d.composite.solid.xor.html
 html/canvas/element/fill-and-stroke-styles/2d.fillStyle.parse.hex3.html
 html/canvas/element/fill-and-stroke-styles/2d.fillStyle.parse.invalid.name-1.html
+html/canvas/element/fill-and-stroke-styles/2d.strokeStyle.default.html
 html/canvas/element/line-styles/2d.line.defaults.html
 html/canvas/element/line-styles/2d.line.width.valid.html
 html/canvas/element/line-styles/2d.line.width.invalid.html

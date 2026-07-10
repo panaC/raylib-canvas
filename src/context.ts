@@ -14,6 +14,12 @@ export interface Canvas2DContext {
   fillStyle: string;
 
   /**
+   * Current stroke style for stroked shapes.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokestyle-dev
+   */
+  strokeStyle: string;
+
+  /**
    * Alpha multiplier applied to drawing operations.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-globalalpha-dev
    */
@@ -158,10 +164,28 @@ export interface Canvas2DContext {
   fillRect(x: number, y: number, width: number, height: number): void;
 
   /**
+   * Strokes a rectangle using the current stroke style.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-strokerect-dev
+   */
+  strokeRect(x: number, y: number, width: number, height: number): void;
+
+  /**
    * Fills the current path or the supplied path.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-fill-dev
    */
   fill(path?: CanvasPath2D, fillRule?: CanvasFillRule): void;
+
+  /**
+   * Strokes the current path or the supplied path.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroke-dev
+   */
+  stroke(path?: CanvasPath2D): void;
+
+  /**
+   * Strokes text using the current stroke style.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-stroketext-dev
+   */
+  strokeText(text: unknown, x: number, y: number, maxWidth?: number): void;
 
   /**
    * Starts a new path.
@@ -324,6 +348,7 @@ type CanvasState = {
   readonly fillColor: Rgba;
   readonly transform: Matrix2D;
   readonly strokeStyle: string;
+  readonly strokeColor: Rgba;
   readonly fillRule: CanvasFillRule;
   readonly globalAlpha: number;
   readonly lineWidth: number;
@@ -729,6 +754,8 @@ export class CanvasImageData {
 export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #fillStyle = "#000000";
   #fillColor: Rgba = [0, 0, 0, 255];
+  #strokeStyle = "#000000";
+  #strokeColor: Rgba = [0, 0, 0, 255];
   #transform: Matrix2D = IDENTITY_MATRIX;
   #currentPath = new CanvasPath2D();
   #stateStack: CanvasState[] = [];
@@ -750,7 +777,6 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #fontStretch: CanvasFontStretch = "normal";
   #fontVariantCaps: CanvasFontVariantCaps = "normal";
   #textRendering: CanvasTextRendering = "auto";
-  strokeStyle = "#000000";
   fillRule: CanvasFillRule = "nonzero";
   filter = "none";
   imageSmoothingEnabled = true;
@@ -774,6 +800,21 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
     this.#fillStyle = color.serialized;
     this.#fillColor = color.rgba;
+  }
+
+  get strokeStyle(): string {
+    return this.#strokeStyle;
+  }
+
+  set strokeStyle(value: string) {
+    const color = parseColor(String(value));
+
+    if (!color) {
+      return;
+    }
+
+    this.#strokeStyle = color.serialized;
+    this.#strokeColor = color.rgba;
   }
 
   get globalAlpha(): number {
@@ -1001,7 +1042,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       fillStyle: this.#fillStyle,
       fillColor: this.#fillColor,
       transform: this.#transform,
-      strokeStyle: this.strokeStyle,
+      strokeStyle: this.#strokeStyle,
+      strokeColor: this.#strokeColor,
       fillRule: this.fillRule,
       globalAlpha: this.globalAlpha,
       lineWidth: this.lineWidth,
@@ -1035,7 +1077,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#fillStyle = state.fillStyle;
     this.#fillColor = state.fillColor;
     this.#transform = state.transform;
-    this.strokeStyle = state.strokeStyle;
+    this.#strokeStyle = state.strokeStyle;
+    this.#strokeColor = state.strokeColor;
     this.fillRule = state.fillRule;
     this.globalAlpha = state.globalAlpha;
     this.lineWidth = state.lineWidth;
@@ -1066,6 +1109,16 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#fillTransformedRect(x, y, width, height, this.#effectiveFillColor());
   }
 
+  strokeRect(x: number, y: number, width: number, height: number): void {
+    if (![x, y, width, height].every(Number.isFinite) || width === 0 || height === 0) {
+      return;
+    }
+
+    const path = new CanvasPath2D();
+    path.rect(x, y, width, height);
+    this.#strokePath(path);
+  }
+
   fill(path: CanvasPath2D = this.#currentPath, _fillRule: CanvasFillRule = this.fillRule): void {
     for (const polygon of pathToPolygons(path, this.#transform)) {
       fillPolygon(
@@ -1077,6 +1130,49 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
         this.#globalCompositeOperation
       );
     }
+  }
+
+  stroke(path: CanvasPath2D = this.#currentPath): void {
+    this.#strokePath(path);
+  }
+
+  strokeText(text: unknown, x: number, y: number, maxWidth?: number): void {
+    const textString = String(text);
+
+    if (
+      textString.length === 0 ||
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      (maxWidth !== undefined && !Number.isFinite(maxWidth))
+    ) {
+      return;
+    }
+
+    const metrics = parseFontMetrics(this.#font);
+    const glyphWidth = metrics.size * 0.6;
+    const glyphHeight = metrics.size;
+    const naturalWidth = textString.length * glyphWidth;
+
+    if (naturalWidth <= 0 || maxWidth === 0) {
+      return;
+    }
+
+    const widthScale = maxWidth !== undefined && maxWidth > 0 && naturalWidth > maxWidth ? maxWidth / naturalWidth : 1;
+    const originX = resolveTextX(x, naturalWidth * widthScale, this.#textAlign);
+    const originY = resolveTextY(y, glyphHeight, this.#textBaseline);
+    const path = new CanvasPath2D();
+
+    for (let index = 0; index < textString.length; index += 1) {
+      if (textString[index] === " ") {
+        continue;
+      }
+
+      const left = originX + index * glyphWidth * widthScale + metrics.size * 0.1 * widthScale;
+      const top = originY + metrics.size * 0.1;
+      path.rect(left, top, glyphWidth * 0.8 * widthScale, glyphHeight * 0.8);
+    }
+
+    this.#strokePath(path);
   }
 
   beginPath(): void {
@@ -1272,9 +1368,55 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
     return [this.#fillColor[0], this.#fillColor[1], this.#fillColor[2], Math.round(this.#fillColor[3] * alpha)];
   }
+
+  #strokePath(path: CanvasPath2D): void {
+    strokePath(
+      this.getPixels(),
+      this.canvas.width,
+      this.canvas.height,
+      path,
+      this.#transform,
+      {
+        color: this.#effectiveStrokeColor(),
+        operation: this.#globalCompositeOperation,
+        lineWidth: this.#lineWidth,
+        lineCap: this.#lineCap,
+        lineJoin: this.#lineJoin,
+        miterLimit: this.#miterLimit,
+        lineDash: this.#lineDash,
+        lineDashOffset: this.#lineDashOffset
+      }
+    );
+  }
+
+  #effectiveStrokeColor(): Rgba {
+    const alpha = this.#globalAlpha;
+
+    if (alpha === 1) {
+      return this.#strokeColor;
+    }
+
+    return [this.#strokeColor[0], this.#strokeColor[1], this.#strokeColor[2], Math.round(this.#strokeColor[3] * alpha)];
+  }
 }
 
 type Point = { readonly x: number; readonly y: number };
+
+type StrokeOptions = {
+  readonly color: Rgba;
+  readonly operation: GlobalCompositeOperation;
+  readonly lineWidth: number;
+  readonly lineCap: CanvasLineCap;
+  readonly lineJoin: CanvasLineJoin;
+  readonly miterLimit: number;
+  readonly lineDash: readonly number[];
+  readonly lineDashOffset: number;
+};
+
+type StrokeSubpath = {
+  readonly points: readonly Point[];
+  readonly closed: boolean;
+};
 
 function pathToPolygons(path: CanvasPath2D, transform: Matrix2D): Point[][] {
   const polygons: Point[][] = [];
@@ -1351,6 +1493,365 @@ function pathToPolygons(path: CanvasPath2D, transform: Matrix2D): Point[][] {
 
   closeCurrent();
   return polygons;
+}
+
+function pathToStrokeSubpaths(path: CanvasPath2D, transform: Matrix2D): StrokeSubpath[] {
+  const subpaths: StrokeSubpath[] = [];
+  let current: Point[] = [];
+  let start: Point | undefined;
+  let lastPoint: Point | undefined;
+
+  const finishOpen = () => {
+    if (current.length >= 2) {
+      subpaths.push({ points: current, closed: false });
+    }
+    current = [];
+    start = undefined;
+    lastPoint = undefined;
+  };
+
+  const finishClosed = () => {
+    if (current.length >= 2) {
+      subpaths.push({ points: current, closed: true });
+    }
+    current = [];
+    start = undefined;
+    lastPoint = undefined;
+  };
+
+  for (const command of path.getCommands()) {
+    if (command.type === "moveTo") {
+      finishOpen();
+      const point = transformPoint(transform, command.x, command.y);
+      current = [point];
+      start = point;
+      lastPoint = point;
+      continue;
+    }
+
+    if (command.type === "lineTo") {
+      const point = transformPoint(transform, command.x, command.y);
+      if (!start) {
+        start = point;
+        current = [point];
+      } else {
+        current.push(point);
+      }
+      lastPoint = point;
+      continue;
+    }
+
+    if (command.type === "bezierCurveTo") {
+      const from = lastPoint ?? transformPoint(transform, 0, 0);
+      if (!start) {
+        start = from;
+        current = [from];
+      }
+      const cp1 = transformPoint(transform, command.cp1x, command.cp1y);
+      const cp2 = transformPoint(transform, command.cp2x, command.cp2y);
+      const to = transformPoint(transform, command.x, command.y);
+      appendCubicBezier(current, from, cp1, cp2, to);
+      lastPoint = to;
+      continue;
+    }
+
+    if (command.type === "quadraticCurveTo") {
+      const from = lastPoint ?? transformPoint(transform, 0, 0);
+      if (!start) {
+        start = from;
+        current = [from];
+      }
+      const cp = transformPoint(transform, command.cpx, command.cpy);
+      const to = transformPoint(transform, command.x, command.y);
+      appendQuadraticBezier(current, from, cp, to);
+      lastPoint = to;
+      continue;
+    }
+
+    if (command.type === "rect") {
+      finishOpen();
+      const leftTop = transformPoint(transform, command.x, command.y);
+      const rightTop = transformPoint(transform, command.x + command.width, command.y);
+      const rightBottom = transformPoint(transform, command.x + command.width, command.y + command.height);
+      const leftBottom = transformPoint(transform, command.x, command.y + command.height);
+      subpaths.push({ points: [leftTop, rightTop, rightBottom, leftBottom], closed: true });
+      continue;
+    }
+
+    if (start) {
+      finishClosed();
+    } else {
+      finishOpen();
+    }
+  }
+
+  finishOpen();
+  return subpaths;
+}
+
+function strokePath(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  path: CanvasPath2D,
+  transform: Matrix2D,
+  options: StrokeOptions
+): void {
+  if (options.color[3] === 0 || options.lineWidth <= 0) {
+    return;
+  }
+
+  const radius = options.lineWidth / 2;
+
+  for (const subpath of pathToStrokeSubpaths(path, transform)) {
+    strokeSubpath(pixels, width, height, subpath, options, radius);
+  }
+}
+
+function strokeSubpath(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  subpath: StrokeSubpath,
+  options: StrokeOptions,
+  radius: number
+): void {
+  const segments = strokeSegments(subpath);
+  if (segments.length === 0) {
+    return;
+  }
+
+  const xs = subpath.points.map((point) => point.x);
+  const ys = subpath.points.map((point) => point.y);
+  const capExtension = subpath.closed || options.lineCap === "butt" ? 0 : radius;
+  const left = clamp(Math.floor(Math.min(...xs) - radius - capExtension), 0, width);
+  const right = clamp(Math.ceil(Math.max(...xs) + radius + capExtension), 0, width);
+  const top = clamp(Math.floor(Math.min(...ys) - radius - capExtension), 0, height);
+  const bottom = clamp(Math.ceil(Math.max(...ys) + radius + capExtension), 0, height);
+  const dash = normalizedDash(options.lineDash);
+  const dashTotal = dash.reduce((total, segment) => total + segment, 0);
+  const cumulativeLengths: number[] = [];
+  let pathLength = 0;
+
+  for (const segment of segments) {
+    cumulativeLengths.push(pathLength);
+    pathLength += segment.length;
+  }
+
+  for (let y = top; y < bottom; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      const point = { x: x + 0.5, y: y + 0.5 };
+      let hit = false;
+
+      for (let index = 0; index < segments.length; index += 1) {
+        const segment = segments[index];
+        if (segment.length === 0) {
+          continue;
+        }
+
+        const distance = distanceToStrokedSegment(
+          point,
+          segment,
+          radius,
+          subpath.closed,
+          index === 0,
+          index === segments.length - 1,
+          options.lineCap
+        );
+
+        if (distance > radius) {
+          continue;
+        }
+
+        const t = segmentProjection(point, segment);
+        const clampedT = clamp(t, 0, 1);
+        const distanceAlongPath = cumulativeLengths[index] + clampedT * segment.length;
+
+        if (dashTotal > 0 && !isDashVisible(distanceAlongPath, dash, dashTotal, options.lineDashOffset)) {
+          continue;
+        }
+
+        hit = true;
+        break;
+      }
+
+      if (!hit && options.lineJoin === "round") {
+        hit = hitsRoundJoin(point, subpath, radius, dash, dashTotal, options.lineDashOffset, pathLength);
+      }
+
+      if (hit) {
+        compositePixel(pixels, (y * width + x) * 4, options.color, options.operation);
+      }
+    }
+  }
+}
+
+function strokeSegments(subpath: StrokeSubpath): Array<{ readonly start: Point; readonly end: Point; readonly length: number }> {
+  const segments: Array<{ readonly start: Point; readonly end: Point; readonly length: number }> = [];
+
+  for (let index = 1; index < subpath.points.length; index += 1) {
+    const start = subpath.points[index - 1];
+    const end = subpath.points[index];
+    segments.push({ start, end, length: pointDistance(start, end) });
+  }
+
+  if (subpath.closed) {
+    const start = subpath.points[subpath.points.length - 1];
+    const end = subpath.points[0];
+    segments.push({ start, end, length: pointDistance(start, end) });
+  }
+
+  return segments;
+}
+
+function distanceToStrokedSegment(
+  point: Point,
+  segment: { readonly start: Point; readonly end: Point; readonly length: number },
+  radius: number,
+  closed: boolean,
+  first: boolean,
+  last: boolean,
+  lineCap: CanvasLineCap
+): number {
+  const rawT = segmentProjection(point, segment);
+  const firstExtension = !closed && first ? capExtension(lineCap, radius, segment.length) : 0;
+  const lastExtension = !closed && last ? capExtension(lineCap, radius, segment.length) : 0;
+  const start = -firstExtension;
+  const end = 1 + lastExtension;
+
+  if (lineCap !== "round" && (rawT < start || rawT > end)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const t = clamp(rawT, start, end);
+
+  const closest = {
+    x: segment.start.x + (segment.end.x - segment.start.x) * t,
+    y: segment.start.y + (segment.end.y - segment.start.y) * t
+  };
+  return pointDistance(point, closest);
+}
+
+function capExtension(lineCap: CanvasLineCap, radius: number, length: number): number {
+  return lineCap === "square" ? radius / length : 0;
+}
+
+function segmentProjection(
+  point: Point,
+  segment: { readonly start: Point; readonly end: Point; readonly length: number }
+): number {
+  const dx = segment.end.x - segment.start.x;
+  const dy = segment.end.y - segment.start.y;
+  return ((point.x - segment.start.x) * dx + (point.y - segment.start.y) * dy) / (segment.length * segment.length);
+}
+
+function hitsRoundJoin(
+  point: Point,
+  subpath: StrokeSubpath,
+  radius: number,
+  dash: readonly number[],
+  dashTotal: number,
+  lineDashOffset: number,
+  pathLength: number
+): boolean {
+  for (let index = 0; index < subpath.points.length; index += 1) {
+    const isEndpoint = !subpath.closed && (index === 0 || index === subpath.points.length - 1);
+    if (isEndpoint) {
+      continue;
+    }
+
+    if (pointDistance(point, subpath.points[index]) > radius) {
+      continue;
+    }
+
+    if (dashTotal === 0 || isDashVisible((pathLength * index) / subpath.points.length, dash, dashTotal, lineDashOffset)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function normalizedDash(dash: readonly number[]): readonly number[] {
+  return dash.length > 0 && dash.some((segment) => segment > 0) ? dash : [];
+}
+
+function isDashVisible(distance: number, dash: readonly number[], dashTotal: number, lineDashOffset: number): boolean {
+  let position = positiveModulo(distance + lineDashOffset, dashTotal);
+
+  for (let index = 0; index < dash.length; index += 1) {
+    if (position < dash[index]) {
+      return index % 2 === 0;
+    }
+    position -= dash[index];
+  }
+
+  return true;
+}
+
+function pointDistance(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function positiveModulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
+}
+
+function parseFontMetrics(font: string): { readonly size: number } {
+  const match = /(?:^|\s)(\d*\.?\d+)(px|pt|em|rem|%)\b/.exec(font);
+
+  if (!match) {
+    return { size: 10 };
+  }
+
+  const value = Number(match[1]);
+  const unit = match[2];
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return { size: 10 };
+  }
+
+  if (unit === "pt") {
+    return { size: (value * 4) / 3 };
+  }
+
+  if (unit === "em" || unit === "rem") {
+    return { size: value * 16 };
+  }
+
+  if (unit === "%") {
+    return { size: (value / 100) * 16 };
+  }
+
+  return { size: value };
+}
+
+function resolveTextX(x: number, width: number, align: CanvasTextAlign): number {
+  if (align === "center") {
+    return x - width / 2;
+  }
+
+  if (align === "right" || align === "end") {
+    return x - width;
+  }
+
+  return x;
+}
+
+function resolveTextY(y: number, height: number, baseline: CanvasTextBaseline): number {
+  if (baseline === "top" || baseline === "hanging") {
+    return y;
+  }
+
+  if (baseline === "middle") {
+    return y - height / 2;
+  }
+
+  if (baseline === "bottom" || baseline === "ideographic") {
+    return y - height;
+  }
+
+  return y - height * 0.8;
 }
 
 function appendCubicBezier(target: Point[], from: Point, cp1: Point, cp2: Point, to: Point): void {

@@ -56,6 +56,14 @@ covers official upstream files for:
   invalid assignment behavior, and solid filled rectangle rendering for core
   Porter-Duff modes plus `lighter` and `clear`
 - `fillStyle` hex parsing and invalid-name retention
+- `strokeStyle` default state, plus unit coverage for supported color parsing
+  and invalid assignment retention
+- `strokeRect()` basic, non-finite, and current-path isolation behavior
+- `stroke()` software path stroking is covered by unit tests for basic paths,
+  transforms, line width, and dashes; full anti-aliasing, exact joins, and broad
+  path edge cases remain partial
+- `strokeText()` has deterministic fallback glyph-outline unit coverage; real
+  font shaping and text metrics remain partial
 - line style defaults and valid/invalid assignment behavior for `lineWidth`,
   `lineCap`, `lineJoin`, and `miterLimit`
 - line dash state behavior is covered by unit tests; the current upstream

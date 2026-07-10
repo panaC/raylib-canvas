@@ -87,6 +87,25 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 0, 0)).toEqual([0, 255, 0, 255]);
   });
 
+  it("serializes supported strokeStyle colors and ignores invalid assignments", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    expect(ctx.strokeStyle).toBe("#000000");
+
+    ctx.strokeStyle = "red";
+    expect(ctx.strokeStyle).toBe("#ff0000");
+
+    ctx.strokeStyle = "#0F0";
+    expect(ctx.strokeStyle).toBe("#00ff00");
+
+    ctx.strokeStyle = "not-a-css-color";
+    expect(ctx.strokeStyle).toBe("#00ff00");
+
+    ctx.strokeRect(1, 1, 2, 2);
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 255, 0, 255]);
+  });
+
   it("validates globalAlpha assignments", async () => {
     const canvas = await createTestCanvas(2, 2);
     const ctx = canvas.getContext("2d");
@@ -430,13 +449,16 @@ describe("createCanvas", () => {
 
     ctx.globalAlpha = 0.25;
     ctx.globalCompositeOperation = "copy";
+    ctx.strokeStyle = "red";
     ctx.save();
     ctx.globalAlpha = 0.75;
     ctx.globalCompositeOperation = "xor";
+    ctx.strokeStyle = "blue";
     ctx.restore();
 
     expect(ctx.globalAlpha).toBe(0.25);
     expect(ctx.globalCompositeOperation).toBe("copy");
+    expect(ctx.strokeStyle).toBe("#ff0000");
   });
 
   it("applies Porter-Duff globalCompositeOperation modes to filled rectangles", async () => {
@@ -508,6 +530,103 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 2, 1)).toEqual([0, 0, 255, 255]);
     expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 255, 255]);
     expect(pixelAt(ctx, 4, 4)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("strokes rectangle outlines with the current stroke style", async () => {
+    const canvas = await createTestCanvas(8, 7);
+    const ctx = canvas.getContext("2d");
+
+    ctx.strokeStyle = "red";
+    ctx.strokeRect(1, 1, 4, 3);
+
+    expect(pixelAt(ctx, 2, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 2)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 3, 2)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 5, 5)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("strokes negative rectangle dimensions in the opposite direction", async () => {
+    const canvas = await createTestCanvas(7, 7);
+    const ctx = canvas.getContext("2d");
+
+    ctx.strokeStyle = "blue";
+    ctx.strokeRect(6, 6, -5, -5);
+
+    expect(pixelAt(ctx, 2, 1)).toEqual([0, 0, 255, 255]);
+    expect(pixelAt(ctx, 1, 3)).toEqual([0, 0, 255, 255]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("does not stroke zero-sized or non-finite rectangles", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.strokeStyle = "red";
+    ctx.strokeRect(0, 0, 3, 0);
+    ctx.strokeRect(0, 0, 0, 3);
+    ctx.strokeRect(Number.NaN, 0, 3, 3);
+    ctx.strokeRect(0, Number.POSITIVE_INFINITY, 3, 3);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("does not add stroked rectangles to the current path", async () => {
+    const canvas = await createTestCanvas(6, 6);
+    const ctx = canvas.getContext("2d");
+
+    ctx.beginPath();
+    ctx.rect(0, 0, 2, 2);
+    ctx.strokeStyle = "red";
+    ctx.strokeRect(4, 4, 1, 1);
+    ctx.fillStyle = "green";
+    ctx.fill();
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 128, 0, 255]);
+    expect(pixelAt(ctx, 4, 4)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("strokes paths with line width, transforms, and line dashes", async () => {
+    const canvas = await createTestCanvas(10, 6);
+    const ctx = canvas.getContext("2d");
+
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 2;
+    ctx.translate(1, 1);
+    ctx.beginPath();
+    ctx.moveTo(1, 2);
+    ctx.lineTo(7, 2);
+    ctx.stroke();
+
+    expect(pixelAt(ctx, 3, 2)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 3, 4)).toEqual([0, 0, 0, 0]);
+
+    ctx.resetTransform();
+    ctx.clearRect(0, 0, 10, 6);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(0, 1);
+    ctx.lineTo(8, 1);
+    ctx.stroke();
+
+    expect(pixelAt(ctx, 0, 1)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 2, 1)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 4, 1)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("strokes text with a deterministic fallback glyph outline", async () => {
+    const canvas = await createTestCanvas(20, 14);
+    const ctx = canvas.getContext("2d");
+
+    ctx.strokeStyle = "red";
+    ctx.font = "10px sans-serif";
+    ctx.strokeText("A", 1, 10);
+
+    expect(pixelAt(ctx, 2, 3)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 10, 10)).toEqual([0, 0, 0, 0]);
   });
 
   it("clips filled rectangles to the canvas bounds", async () => {
