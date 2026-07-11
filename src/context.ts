@@ -212,6 +212,18 @@ export interface Canvas2DContext {
   reset(): void;
 
   /**
+   * Starts rendering into a new transparent canvas layer.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-beginlayer-dev
+   */
+  beginLayer(options?: CanvasLayerOptions | null): void;
+
+  /**
+   * Composites the current canvas layer back into its parent.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-endlayer-dev
+   */
+  endLayer(): void;
+
+  /**
    * Saves the current drawing state.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-save-dev
    */
@@ -506,6 +518,10 @@ type CanvasTextRendering = "auto" | "optimizeSpeed" | "optimizeLegibility" | "ge
 type CanvasImageSmoothingQuality = "low" | "medium" | "high";
 type CanvasImageDataColorSpace = "srgb";
 
+type CanvasLayerOptions = {
+  readonly filter?: unknown;
+};
+
 type Matrix2D = readonly [number, number, number, number, number, number];
 
 type PathCommand =
@@ -576,6 +592,15 @@ type CanvasState = {
   readonly lineDash: readonly number[];
   readonly lineDashOffset: number;
   readonly clipMask?: Uint8Array;
+};
+
+type CanvasLayer = {
+  readonly pixels: Uint8ClampedArray;
+  readonly alpha: number;
+  readonly operation: GlobalCompositeOperation;
+  readonly filterOpacity: number;
+  readonly savedStateDepth: number;
+  readonly outerState: CanvasState;
 };
 
 type CanvasGradientDefinition =
@@ -1353,11 +1378,16 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #imageSmoothingEnabled = true;
   #imageSmoothingQuality: CanvasImageSmoothingQuality = "low";
   #clipMask: Uint8Array | undefined;
+  #layerStack: CanvasLayer[] = [];
   fillRule: CanvasFillRule = "nonzero";
 
   constructor(readonly canvas: Canvas) {}
 
-  abstract getPixels(): Uint8ClampedArray;
+  getPixels(): Uint8ClampedArray {
+    return this.#layerStack.at(-1)?.pixels ?? this.getBasePixels();
+  }
+
+  protected abstract getBasePixels(): Uint8ClampedArray;
 
   protected abstract fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void;
 
@@ -1737,16 +1767,88 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     return new CanvasPattern(image, normalized);
   }
 
+  beginLayer(options: CanvasLayerOptions | null = null): void {
+    if (options !== null && options !== undefined && typeof options !== "object") {
+      throw new TypeError("beginLayer() options must be an object.");
+    }
+
+    let filterOpacity = this.#filterOpacity;
+    if (options && "filter" in options) {
+      const filter = parseCanvasFilter(String(options.filter));
+      filterOpacity = filter?.opacity ?? 1;
+    }
+
+    this.#layerStack.push({
+      pixels: new Uint8ClampedArray(this.canvas.width * this.canvas.height * 4),
+      alpha: this.#globalAlpha,
+      operation: this.#globalCompositeOperation,
+      filterOpacity,
+      savedStateDepth: this.#stateStack.length,
+      outerState: this.#captureState()
+    });
+    this.#resetLayerRenderingState();
+  }
+
+  endLayer(): void {
+    const layer = this.#layerStack.pop();
+
+    if (!layer) {
+      throw createInvalidStateError("There is no canvas layer to end.");
+    }
+
+    if (this.#stateStack.length !== layer.savedStateDepth) {
+      this.#layerStack.push(layer);
+      throw createInvalidStateError("Canvas layer cannot end across saved drawing state.");
+    }
+
+    const target = this.getPixels();
+    const alpha = layer.alpha * layer.filterOpacity;
+
+    for (let offset = 0; offset < layer.pixels.length; offset += 4) {
+      const source = applyAlpha(
+        [layer.pixels[offset], layer.pixels[offset + 1], layer.pixels[offset + 2], layer.pixels[offset + 3]],
+        alpha
+      );
+
+      if (source[3] !== 0 || layer.operation === "clear" || layer.operation === "copy") {
+        compositePixel(target, offset, source, layer.operation);
+      }
+    }
+
+    this.#applyState(layer.outerState);
+  }
+
   reset(): void {
-    this.fillRectPixels(0, 0, this.canvas.width, this.canvas.height, TRANSPARENT_BLACK);
+    this.#clearAllPixels();
     this.#resetDrawingState();
     this.#currentPath = new CanvasPath2D();
     this.#stateStack = [];
     this.#clipMask = undefined;
+    this.#layerStack = [];
   }
 
   save(): void {
-    this.#stateStack.push({
+    this.#stateStack.push(this.#captureState());
+  }
+
+  restore(): void {
+    const layer = this.#layerStack.at(-1);
+
+    if (layer && this.#stateStack.length <= layer.savedStateDepth) {
+      throw createInvalidStateError("Canvas layer cannot restore across its layer boundary.");
+    }
+
+    const state = this.#stateStack.pop();
+
+    if (!state) {
+      return;
+    }
+
+    this.#applyState(state);
+  }
+
+  #captureState(): CanvasState {
+    return {
       fillStyle: this.#fillStyle,
       fillPaint: this.#fillPaint,
       transform: this.#transform,
@@ -1781,16 +1883,10 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       lineDash: [...this.#lineDash],
       lineDashOffset: this.lineDashOffset,
       clipMask: this.#clipMask ? new Uint8Array(this.#clipMask) : undefined
-    });
+    };
   }
 
-  restore(): void {
-    const state = this.#stateStack.pop();
-
-    if (!state) {
-      return;
-    }
-
+  #applyState(state: CanvasState): void {
     this.#fillStyle = state.fillStyle;
     this.#fillPaint = state.fillPaint;
     this.#transform = state.transform;
@@ -1827,6 +1923,18 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#clipMask = state.clipMask ? new Uint8Array(state.clipMask) : undefined;
   }
 
+  #resetLayerRenderingState(): void {
+    this.#globalAlpha = 1;
+    this.#globalCompositeOperation = "source-over";
+    this.#filter = "none";
+    this.#filterOpacity = 1;
+    this.#shadowOffsetX = 0;
+    this.#shadowOffsetY = 0;
+    this.#shadowBlur = 0;
+    this.#shadowColor = "rgba(0, 0, 0, 0)";
+    this.#shadowRgba = [0, 0, 0, 0];
+  }
+
   #resetDrawingState(): void {
     this.#fillStyle = "#000000";
     this.#fillPaint = { type: "color", rgba: [0, 0, 0, 255] };
@@ -1861,6 +1969,13 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#shadowRgba = [0, 0, 0, 0];
     this.#imageSmoothingEnabled = true;
     this.#imageSmoothingQuality = "low";
+  }
+
+  #clearAllPixels(): void {
+    this.getBasePixels().fill(0);
+    for (const layer of this.#layerStack) {
+      layer.pixels.fill(0);
+    }
   }
 
   clearRect(x: number, y: number, width: number, height: number): void {
@@ -2394,7 +2509,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       return;
     }
 
-    if (isIdentityMatrix(this.#transform) && !this.#clipMask) {
+    if (isIdentityMatrix(this.#transform) && !this.#clipMask && this.#layerStack.length === 0) {
       this.fillRectPixels(x, y, width, height, TRANSPARENT_BLACK);
       return;
     }
@@ -4613,6 +4728,16 @@ function createNotSupportedError(message: string): Error {
 
   const error = new Error(message);
   error.name = "NotSupportedError";
+  return error;
+}
+
+function createInvalidStateError(message: string): Error {
+  if (typeof DOMException === "function") {
+    return new DOMException(message, "InvalidStateError");
+  }
+
+  const error = new Error(message);
+  error.name = "InvalidStateError";
   return error;
 }
 

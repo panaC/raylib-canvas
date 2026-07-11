@@ -38,6 +38,11 @@
     },
     {
       "status": "blocked",
+      "prefix": "html/canvas/element/layers/",
+      "reason": "beginLayer()/endLayer() call validation, saved-state boundaries, rendering-state reset/restore, and basic offscreen compositing have smoke/unit coverage; remaining layer tests require broader filter, shadow, clipping, advanced compositing, and reference-rendering fidelity."
+    },
+    {
+      "status": "blocked",
       "prefix": "html/canvas/element/text/",
       "reason": "Text style state, basic font/spacing parsing, and empty-string measureText() have smoke coverage; remaining text WPTs require fillText(), broader strokeText(), font loading, shaping, or browser-exact text metrics."
     },

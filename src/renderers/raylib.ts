@@ -76,7 +76,7 @@ export class RaylibCanvas2DContext extends Canvas2DRenderingContext {
     this.#refreshPixelsView();
   }
 
-  getPixels(): Uint8ClampedArray {
+  protected getBasePixels(): Uint8ClampedArray {
     this.#assertNotDisposed();
     this.#refreshPixelsView();
     return this.#pixels;

@@ -408,6 +408,97 @@ describe("createCanvas", () => {
     expect(ctx.isPointInStroke(3, 3)).toBe(false);
   });
 
+  it("validates layer calls and composites layer pixels on endLayer", async () => {
+    const canvas = await createTestCanvas(2, 1);
+    const ctx = canvas.getContext("2d");
+
+    expect(() => ctx.endLayer()).toThrowError(/layer/i);
+    expect(() => ctx.beginLayer("" as never)).toThrow(TypeError);
+    expect(() => ctx.beginLayer(1 as never)).toThrow(TypeError);
+    expect(() => {
+      ctx.beginLayer([]);
+      ctx.endLayer();
+    }).not.toThrow();
+
+    ctx.fillStyle = "blue";
+    ctx.fillRect(0, 0, 2, 1);
+    ctx.globalAlpha = 0.5;
+    ctx.beginLayer();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 1, 1);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+
+    ctx.endLayer();
+    expect(pixelAt(ctx, 0, 0)).toEqual([128, 0, 127, 255]);
+    expect(pixelAt(ctx, 1, 0)).toEqual([0, 0, 255, 255]);
+  });
+
+  it("resets layer rendering state and enforces layer save boundaries", async () => {
+    const canvas = await createTestCanvas(1, 1);
+    const ctx = canvas.getContext("2d");
+
+    ctx.globalAlpha = 0.5;
+    ctx.globalCompositeOperation = "xor";
+    ctx.shadowColor = "blue";
+    ctx.shadowOffsetX = 10;
+    ctx.shadowOffsetY = 20;
+    ctx.shadowBlur = 30;
+    ctx.filter = "opacity(0.25)";
+
+    ctx.beginLayer();
+    expect(ctx.globalAlpha).toBe(1);
+    expect(ctx.globalCompositeOperation).toBe("source-over");
+    expect(ctx.shadowColor).toBe("rgba(0, 0, 0, 0)");
+    expect(ctx.shadowOffsetX).toBe(0);
+    expect(ctx.shadowOffsetY).toBe(0);
+    expect(ctx.shadowBlur).toBe(0);
+    expect(ctx.filter).toBe("none");
+    expect(() => ctx.restore()).toThrowError(/layer/i);
+    ctx.endLayer();
+
+    expect(ctx.globalAlpha).toBe(0.5);
+    expect(ctx.globalCompositeOperation).toBe("xor");
+    expect(ctx.shadowColor).toBe("#0000ff");
+    expect(ctx.shadowOffsetX).toBe(10);
+    expect(ctx.shadowOffsetY).toBe(20);
+    expect(ctx.shadowBlur).toBe(30);
+    expect(ctx.filter).toBe("opacity(0.25)");
+
+    ctx.beginLayer();
+    ctx.save();
+    expect(() => ctx.endLayer()).toThrowError(/state/i);
+    ctx.restore();
+    ctx.endLayer();
+  });
+
+  it("supports nested layers and reset discards active layers", async () => {
+    const canvas = await createTestCanvas(2, 1);
+    const ctx = canvas.getContext("2d");
+
+    ctx.beginLayer();
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 1, 1);
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.beginLayer();
+    ctx.fillStyle = "blue";
+    ctx.fillRect(0, 0, 2, 1);
+    ctx.endLayer();
+    ctx.endLayer();
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 0)).toEqual([0, 0, 255, 255]);
+
+    ctx.beginLayer();
+    ctx.fillStyle = "green";
+    ctx.fillRect(0, 0, 2, 1);
+    ctx.reset();
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
+    expect(() => ctx.endLayer()).toThrowError(/layer/i);
+  });
+
   it("exposes default text drawing styles", async () => {
     const canvas = await createTestCanvas(2, 2);
     const ctx = canvas.getContext("2d");

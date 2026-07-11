@@ -32,7 +32,7 @@ export class JavascriptCanvas2DContext extends Canvas2DRenderingContext {
     }
   }
 
-  getPixels(): Uint8ClampedArray {
+  protected getBasePixels(): Uint8ClampedArray {
     return this.pixels;
   }
 }

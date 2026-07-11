@@ -118,6 +118,10 @@ covers official upstream files for:
 - `reset()` bitmap clearing and drawing-state reset behavior, including styles,
   shadows, filters, line state, text state, image smoothing, clipping, and
   transforms; heavier reset rendering reference tests remain partial
+- `beginLayer()`/`endLayer()` call validation, option argument behavior,
+  saved-state boundary errors, layer rendering-state reset/restore, basic
+  offscreen pixel compositing, and transform state inside layers; filter,
+  shadow, and broad reference-rendering layer tests remain partial
 - the full upstream `html/canvas/element/transformations/` directory,
   including transform ordering, skewed transforms, non-finite argument
   handling, and matrix multiplication behavior
