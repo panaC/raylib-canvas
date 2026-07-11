@@ -120,8 +120,11 @@ covers official upstream files for:
   transforms; heavier reset rendering reference tests remain partial
 - `beginLayer()`/`endLayer()` call validation, option argument behavior,
   saved-state boundary errors, layer rendering-state reset/restore, basic
-  offscreen pixel compositing, and transform state inside layers; filter,
-  shadow, and broad reference-rendering layer tests remain partial
+  offscreen pixel compositing, transform state inside layers, reset discarding
+  active layers, and unit coverage for rejecting readback/source use while
+  layers are open; most upstream `html/canvas/element/layers/` tests are now
+  smoke-gated, while browser-exact anisotropic blur and CSS/drop-shadow filter
+  reference tests remain partial
 - the full upstream `html/canvas/element/transformations/` directory,
   including transform ordering, skewed transforms, non-finite argument
   handling, and matrix multiplication behavior

@@ -428,11 +428,34 @@ describe("createCanvas", () => {
     ctx.fillStyle = "red";
     ctx.fillRect(0, 0, 1, 1);
 
-    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(ctx.hasOpenLayers()).toBe(true);
+    expect(() => ctx.getImageData(0, 0, 1, 1)).toThrowError(/layers/i);
 
     ctx.endLayer();
+    expect(ctx.hasOpenLayers()).toBe(false);
     expect(pixelAt(ctx, 0, 0)).toEqual([128, 0, 127, 255]);
     expect(pixelAt(ctx, 1, 0)).toEqual([0, 0, 255, 255]);
+  });
+
+  it("rejects pixel extraction and canvas source usage while layers are open", async () => {
+    const source = await createTestCanvas(2, 2);
+    const sourceContext = source.getContext("2d");
+    const target = await createTestCanvas(2, 2);
+    const targetContext = target.getContext("2d");
+    const imageData = targetContext.createImageData(1, 1);
+
+    sourceContext.beginLayer();
+
+    expect(() => sourceContext.getImageData(0, 0, 1, 1)).toThrowError(/layers/i);
+    expect(() => sourceContext.putImageData(imageData, 0, 0)).toThrowError(/layers/i);
+    expect(() => sourceContext.createPattern(source)).toThrowError(/layers/i);
+    expect(() => targetContext.drawImage(source, 0, 0)).toThrowError(/layers/i);
+    expect(() => source.toDataURL()).toThrowError(/layers/i);
+
+    sourceContext.endLayer();
+
+    expect(() => sourceContext.getImageData(0, 0, 1, 1)).not.toThrow();
+    expect(() => targetContext.drawImage(source, 0, 0)).not.toThrow();
   });
 
   it("resets layer rendering state and enforces layer save boundaries", async () => {

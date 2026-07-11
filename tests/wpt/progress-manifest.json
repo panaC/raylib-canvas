@@ -39,7 +39,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/layers/",
-      "reason": "beginLayer()/endLayer() call validation, saved-state boundaries, rendering-state reset/restore, and basic offscreen compositing have smoke/unit coverage; remaining layer tests require broader filter, shadow, clipping, advanced compositing, and reference-rendering fidelity."
+      "reason": "Most layer tests are smoke-gated, including call validation, saved-state boundaries, rendering-state reset/restore, reset discarding active layers, offscreen compositing, readback/source rejection, clipping, transforms, shadows, and many filter interactions; remaining layer tests require browser-exact anisotropic blur and CSS/drop-shadow filter reference fidelity."
     },
     {
       "status": "blocked",

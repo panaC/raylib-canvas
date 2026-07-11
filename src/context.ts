@@ -182,6 +182,12 @@ export interface Canvas2DContext {
   getPixels(): Uint8ClampedArray;
 
   /**
+   * Returns whether this context currently has open canvas layers.
+   * This is a deliberate package extension for host integration checks.
+   */
+  hasOpenLayers(): boolean;
+
+  /**
    * Creates a linear gradient style.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createlineargradient-dev
    */
@@ -522,6 +528,17 @@ type CanvasLayerOptions = {
   readonly filter?: unknown;
 };
 
+type ParsedCanvasFilter = {
+  readonly serialized: string;
+  readonly opacity: number;
+  readonly operations: readonly CanvasFilterOperation[];
+};
+
+type CanvasFilterOperation =
+  | { readonly type: "opacity"; readonly amount: number }
+  | { readonly type: "blur"; readonly stdDeviationX: number; readonly stdDeviationY: number }
+  | { readonly type: "dropShadow"; readonly dx: number; readonly dy: number; readonly stdDeviationX: number; readonly stdDeviationY: number; readonly color: Rgba };
+
 type Matrix2D = readonly [number, number, number, number, number, number];
 
 type PathCommand =
@@ -584,6 +601,7 @@ type CanvasState = {
   readonly imageSmoothingQuality: CanvasImageSmoothingQuality;
   readonly filter: string;
   readonly filterOpacity: number;
+  readonly filterOperations: readonly CanvasFilterOperation[];
   readonly shadowOffsetX: number;
   readonly shadowOffsetY: number;
   readonly shadowBlur: number;
@@ -599,6 +617,7 @@ type CanvasLayer = {
   readonly alpha: number;
   readonly operation: GlobalCompositeOperation;
   readonly filterOpacity: number;
+  readonly filterOperations: readonly CanvasFilterOperation[];
   readonly savedStateDepth: number;
   readonly outerState: CanvasState;
 };
@@ -655,8 +674,17 @@ type NormalizedRect = {
 const NAMED_COLORS: Record<string, Rgba> = {
   black: [0, 0, 0, 255],
   blue: [0, 0, 255, 255],
+  gray: [128, 128, 128, 255],
   green: [0, 128, 0, 255],
+  grey: [128, 128, 128, 255],
+  maroon: [128, 0, 0, 255],
+  navy: [0, 0, 128, 255],
+  orange: [255, 165, 0, 255],
+  pink: [255, 192, 203, 255],
+  purple: [128, 0, 128, 255],
   red: [255, 0, 0, 255],
+  skyblue: [135, 206, 235, 255],
+  teal: [0, 128, 128, 255],
   transparent: [0, 0, 0, 0],
   white: [255, 255, 255, 255]
 };
@@ -1370,6 +1398,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #textRendering: CanvasTextRendering = "auto";
   #filter = "none";
   #filterOpacity = 1;
+  #filterOperations: readonly CanvasFilterOperation[] = [];
   #shadowOffsetX = 0;
   #shadowOffsetY = 0;
   #shadowBlur = 0;
@@ -1385,6 +1414,10 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
   getPixels(): Uint8ClampedArray {
     return this.#layerStack.at(-1)?.pixels ?? this.getBasePixels();
+  }
+
+  hasOpenLayers(): boolean {
+    return this.#layerStack.length > 0;
   }
 
   protected abstract getBasePixels(): Uint8ClampedArray;
@@ -1731,6 +1764,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
 
     this.#filter = filter.serialized;
     this.#filterOpacity = filter.opacity;
+    this.#filterOperations = filter.operations;
   }
 
   createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradient {
@@ -1764,6 +1798,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       return null;
     }
 
+    assertCanvasSourceUsable(image);
+
     return new CanvasPattern(image, normalized);
   }
 
@@ -1773,9 +1809,11 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
 
     let filterOpacity = this.#filterOpacity;
+    let filterOperations = this.#filterOperations;
     if (options && "filter" in options) {
-      const filter = parseCanvasFilter(String(options.filter));
+      const filter = parseCanvasLayerFilter(options.filter);
       filterOpacity = filter?.opacity ?? 1;
+      filterOperations = filter?.operations ?? [];
     }
 
     this.#layerStack.push({
@@ -1783,6 +1821,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       alpha: this.#globalAlpha,
       operation: this.#globalCompositeOperation,
       filterOpacity,
+      filterOperations,
       savedStateDepth: this.#stateStack.length,
       outerState: this.#captureState()
     });
@@ -1802,11 +1841,12 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
 
     const target = this.getPixels();
+    const filteredPixels = applyCanvasFilterOperations(layer.pixels, this.canvas.width, this.canvas.height, layer.filterOperations);
     const alpha = layer.alpha * layer.filterOpacity;
 
-    for (let offset = 0; offset < layer.pixels.length; offset += 4) {
+    for (let offset = 0; offset < filteredPixels.length; offset += 4) {
       const source = applyAlpha(
-        [layer.pixels[offset], layer.pixels[offset + 1], layer.pixels[offset + 2], layer.pixels[offset + 3]],
+        [filteredPixels[offset], filteredPixels[offset + 1], filteredPixels[offset + 2], filteredPixels[offset + 3]],
         alpha
       );
 
@@ -1875,6 +1915,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       imageSmoothingQuality: this.imageSmoothingQuality,
       filter: this.filter,
       filterOpacity: this.#filterOpacity,
+      filterOperations: this.#filterOperations,
       shadowOffsetX: this.shadowOffsetX,
       shadowOffsetY: this.shadowOffsetY,
       shadowBlur: this.shadowBlur,
@@ -1913,6 +1954,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#imageSmoothingQuality = state.imageSmoothingQuality;
     this.#filter = state.filter;
     this.#filterOpacity = state.filterOpacity;
+    this.#filterOperations = state.filterOperations;
     this.#shadowOffsetX = state.shadowOffsetX;
     this.#shadowOffsetY = state.shadowOffsetY;
     this.#shadowBlur = state.shadowBlur;
@@ -1928,6 +1970,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#globalCompositeOperation = "source-over";
     this.#filter = "none";
     this.#filterOpacity = 1;
+    this.#filterOperations = [];
     this.#shadowOffsetX = 0;
     this.#shadowOffsetY = 0;
     this.#shadowBlur = 0;
@@ -1962,6 +2005,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#textRendering = "auto";
     this.#filter = "none";
     this.#filterOpacity = 1;
+    this.#filterOperations = [];
     this.#shadowOffsetX = 0;
     this.#shadowOffsetY = 0;
     this.#shadowBlur = 0;
@@ -1975,6 +2019,12 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.getBasePixels().fill(0);
     for (const layer of this.#layerStack) {
       layer.pixels.fill(0);
+    }
+  }
+
+  #assertNoOpenLayersForPixelReadback(): void {
+    if (this.hasOpenLayers()) {
+      throw createInvalidStateError("Canvas pixel data cannot be accessed while layers are open.");
     }
   }
 
@@ -2161,6 +2211,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       throw createTypeMismatchError("The image argument is not a supported CanvasImageSource.");
     }
 
+    assertCanvasSourceUsable(image);
+
     const geometry = normalizeDrawImageArguments(image, args);
 
     if (!geometry) {
@@ -2268,6 +2320,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   }
 
   getImageData(sx: number, sy: number, sw: number, sh: number, settings?: ImageDataSettings): CanvasImageData {
+    this.#assertNoOpenLayersForPixelReadback();
+
     const sourceX = toWebIDLLong(sx, "sx");
     const sourceY = toWebIDLLong(sy, "sy");
     const sourceWidth = toWebIDLLong(sw, "sw");
@@ -2325,6 +2379,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     dirtyWidth?: number,
     dirtyHeight?: number
   ): void {
+    this.#assertNoOpenLayersForPixelReadback();
+
     if (!(imageData instanceof CanvasImageData)) {
       throw new TypeError("putImageData() requires a CanvasImageData object.");
     }
@@ -4236,28 +4292,203 @@ function isCanvasImageSource(value: unknown): value is Canvas {
   );
 }
 
-function parseCanvasFilter(value: string): { readonly serialized: string; readonly opacity: number } | undefined {
+function assertCanvasSourceUsable(canvas: Canvas): void {
+  if (canvas.getContext("2d").hasOpenLayers()) {
+    throw createInvalidStateError("Canvas cannot be used as an image source while layers are open.");
+  }
+}
+
+function parseCanvasFilter(value: string): ParsedCanvasFilter | undefined {
   const normalized = value.trim().toLowerCase();
 
   if (normalized === "none") {
-    return { serialized: "none", opacity: 1 };
+    return { serialized: "none", opacity: 1, operations: [] };
   }
 
-  const opacity = /^opacity\(\s*(\d*\.?\d+%?)\s*\)$/.exec(normalized);
-  if (opacity) {
-    const amount = opacity[1].endsWith("%") ? Number(opacity[1].slice(0, -1)) / 100 : Number(opacity[1]);
-    if (!Number.isFinite(amount)) {
-      return undefined;
-    }
-    return { serialized: `opacity(${serializeCssNumber(clamp(amount, 0, 1))})`, opacity: clamp(amount, 0, 1) };
+  const operations = parseCssFilterOperations(value);
+  if (!operations) {
+    return undefined;
   }
 
-  const blur = /^blur\(\s*([^)]+)\s*\)$/.exec(normalized);
-  if (blur && parseCssLength(blur[1]) !== undefined) {
-    return { serialized: value, opacity: 1 };
+  return {
+    serialized: operations.serialized,
+    opacity: operations.opacity,
+    operations: operations.operations
+  };
+}
+
+function parseCanvasLayerFilter(value: unknown): ParsedCanvasFilter | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return combineParsedFilters(value.map(parseCanvasFilterObject).filter((filter): filter is ParsedCanvasFilter => filter !== undefined));
+  }
+
+  if (typeof value === "object") {
+    return parseCanvasFilterObject(value);
+  }
+
+  return parseCanvasFilter(String(value));
+}
+
+function parseCanvasFilterObject(value: unknown): ParsedCanvasFilter | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const name = String(record.name ?? "");
+
+  if (name === "gaussianBlur") {
+    const [stdDeviationX, stdDeviationY] = parseFilterStdDeviation(record.stdDeviation);
+    return {
+      serialized: "blur()",
+      opacity: 1,
+      operations: [{ type: "blur", stdDeviationX, stdDeviationY }]
+    };
+  }
+
+  if (name === "dropShadow") {
+    const [stdDeviationX, stdDeviationY] = parseFilterStdDeviation(record.stdDeviation ?? 0);
+    const color: Rgba = record.floodColor === undefined ? [0, 0, 0, 255] : parseColor(String(record.floodColor))?.rgba ?? [0, 0, 0, 255];
+    return {
+      serialized: "drop-shadow()",
+      opacity: 1,
+      operations: [
+        {
+          type: "dropShadow",
+          dx: Number(record.dx ?? 0),
+          dy: Number(record.dy ?? 0),
+          stdDeviationX,
+          stdDeviationY,
+          color
+        }
+      ]
+    };
+  }
+
+  if (name === "colorMatrix" && !isValidColorMatrixValues(record.values)) {
+    throw new TypeError("CanvasFilter colorMatrix values must be numeric.");
   }
 
   return undefined;
+}
+
+function combineParsedFilters(filters: readonly ParsedCanvasFilter[]): ParsedCanvasFilter | undefined {
+  if (filters.length === 0) {
+    return undefined;
+  }
+
+  return {
+    serialized: filters.map((filter) => filter.serialized).join(" "),
+    opacity: filters.reduce((opacity, filter) => opacity * filter.opacity, 1),
+    operations: filters.flatMap((filter) => filter.operations)
+  };
+}
+
+function parseCssFilterOperations(value: string): ParsedCanvasFilter | undefined {
+  const operations: CanvasFilterOperation[] = [];
+  const serializedParts: string[] = [];
+  let opacityAmount = 1;
+  const parts = value.match(/[a-z-]+\([^)]*\)/gi);
+
+  if (!parts || parts.join(" ").trim().length !== value.trim().length) {
+    return undefined;
+  }
+
+  for (const part of parts) {
+    const opacity = /^opacity\(\s*(\d*\.?\d+%?)\s*\)$/i.exec(part);
+    if (opacity) {
+      const amount = opacity[1].endsWith("%") ? Number(opacity[1].slice(0, -1)) / 100 : Number(opacity[1]);
+      if (!Number.isFinite(amount)) {
+        return undefined;
+      }
+      const clamped = clamp(amount, 0, 1);
+      opacityAmount *= clamped;
+      operations.push({ type: "opacity", amount: clamped });
+      serializedParts.push(`opacity(${serializeCssNumber(clamped)})`);
+      continue;
+    }
+
+    const blur = /^blur\(\s*([^)]+)\s*\)$/i.exec(part);
+    if (blur) {
+      const radius = parseFilterLength(blur[1]);
+      if (radius === undefined) {
+        return undefined;
+      }
+      operations.push({ type: "blur", stdDeviationX: radius, stdDeviationY: radius });
+      serializedParts.push(part);
+      continue;
+    }
+
+    const dropShadow = /^drop-shadow\(\s*([^)]+)\s*\)$/i.exec(part);
+    if (dropShadow) {
+      const parsed = parseDropShadowFilter(dropShadow[1]);
+      if (!parsed) {
+        return undefined;
+      }
+      operations.push(parsed);
+      serializedParts.push(part);
+      continue;
+    }
+
+    return undefined;
+  }
+
+  return { serialized: serializedParts.join(" "), opacity: opacityAmount, operations };
+}
+
+function parseDropShadowFilter(value: string): CanvasFilterOperation | undefined {
+  const parts = value.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return undefined;
+  }
+
+  const dx = parseFilterLength(parts[0]);
+  const dy = parseFilterLength(parts[1]);
+  let stdDeviation = 0;
+  let colorStart = 2;
+
+  if (parts[2] !== undefined && parseFilterLength(parts[2]) !== undefined) {
+    stdDeviation = parseFilterLength(parts[2])!;
+    colorStart = 3;
+  }
+
+  if (dx === undefined || dy === undefined) {
+    return undefined;
+  }
+
+  const colorText = parts.slice(colorStart).join(" ");
+  const color: Rgba = colorText.length > 0 ? parseColor(colorText)?.rgba ?? [0, 0, 0, 255] : [0, 0, 0, 255];
+  return { type: "dropShadow", dx, dy, stdDeviationX: stdDeviation, stdDeviationY: stdDeviation, color };
+}
+
+function parseFilterLength(value: string): number | undefined {
+  const length = parseCssLength(value);
+  if (!length?.endsWith("px")) {
+    return undefined;
+  }
+
+  const number = Number(length.slice(0, -2));
+  return Number.isFinite(number) ? Math.max(0, number) : undefined;
+}
+
+function parseFilterStdDeviation(value: unknown): [number, number] {
+  if (Array.isArray(value)) {
+    const x = Number(value[0] ?? 0);
+    const y = Number(value[1] ?? x);
+    return [Number.isFinite(x) ? Math.max(0, x) : 0, Number.isFinite(y) ? Math.max(0, y) : 0];
+  }
+
+  const amount = Number(value ?? 0);
+  const normalized = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  return [normalized, normalized];
+}
+
+function isValidColorMatrixValues(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 20 && value.every((entry) => Number.isFinite(Number(entry)));
 }
 
 function applyAlpha(color: Rgba, alpha: number): Rgba {
@@ -4266,6 +4497,173 @@ function applyAlpha(color: Rgba, alpha: number): Rgba {
   }
 
   return [color[0], color[1], color[2], Math.round(color[3] * clamp(alpha, 0, 1))];
+}
+
+function applyCanvasFilterOperations(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  operations: readonly CanvasFilterOperation[]
+): Uint8ClampedArray {
+  let output = copyPixels(pixels);
+
+  for (const operation of operations) {
+    if (operation.type === "opacity") {
+      output = applyOpacityFilter(output, operation.amount);
+      continue;
+    }
+
+    if (operation.type === "blur") {
+      output = applyBlurFilter(output, width, height, operation.stdDeviationX, operation.stdDeviationY);
+      continue;
+    }
+
+    output = applyDropShadowFilter(output, width, height, operation);
+  }
+
+  return output;
+}
+
+function applyOpacityFilter(pixels: Uint8ClampedArray, amount: number): Uint8ClampedArray {
+  const output = copyPixels(pixels);
+
+  for (let offset = 3; offset < output.length; offset += 4) {
+    output[offset] = Math.round(output[offset] * clamp(amount, 0, 1));
+  }
+
+  return output;
+}
+
+function applyDropShadowFilter(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  operation: Extract<CanvasFilterOperation, { readonly type: "dropShadow" }>
+): Uint8ClampedArray {
+  const shadow = new Uint8ClampedArray(pixels.length);
+  const dx = Math.round(operation.dx);
+  const dy = Math.round(operation.dy);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const sourceOffset = (y * width + x) * 4;
+      const alpha = pixels[sourceOffset + 3];
+
+      if (alpha === 0) {
+        continue;
+      }
+
+      const targetX = x + dx;
+      const targetY = y + dy;
+
+      if (targetX < 0 || targetX >= width || targetY < 0 || targetY >= height) {
+        continue;
+      }
+
+      const targetOffset = (targetY * width + targetX) * 4;
+      const color = applyAlpha(operation.color, alpha / 255);
+      compositePixel(shadow, targetOffset, color, "source-over");
+    }
+  }
+
+  const blurredShadow = applyBlurFilter(shadow, width, height, operation.stdDeviationX, operation.stdDeviationY);
+  const output = copyPixels(blurredShadow);
+
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    compositePixel(output, offset, [pixels[offset], pixels[offset + 1], pixels[offset + 2], pixels[offset + 3]], "source-over");
+  }
+
+  return output;
+}
+
+function applyBlurFilter(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  stdDeviationX: number,
+  stdDeviationY: number
+): Uint8ClampedArray {
+  const radiusX = Math.ceil(stdDeviationX * 3);
+  const radiusY = Math.ceil(stdDeviationY * 3);
+  let output = pixels;
+
+  if (radiusX > 0) {
+    output = boxBlurHorizontal(output, width, height, radiusX);
+  }
+
+  if (radiusY > 0) {
+    output = boxBlurVertical(output, width, height, radiusY);
+  }
+
+  return output === pixels ? copyPixels(pixels) : output;
+}
+
+function copyPixels(pixels: Uint8ClampedArray): Uint8ClampedArray {
+  const copy = new Uint8ClampedArray(pixels.length);
+  copy.set(pixels);
+  return copy;
+}
+
+function boxBlurHorizontal(pixels: Uint8ClampedArray, width: number, height: number, radius: number): Uint8ClampedArray {
+  const output = new Uint8ClampedArray(pixels.length);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let alpha = 0;
+      let count = 0;
+
+      for (let sx = Math.max(0, x - radius); sx <= Math.min(width - 1, x + radius); sx += 1) {
+        const offset = (y * width + sx) * 4;
+        red += pixels[offset];
+        green += pixels[offset + 1];
+        blue += pixels[offset + 2];
+        alpha += pixels[offset + 3];
+        count += 1;
+      }
+
+      const targetOffset = (y * width + x) * 4;
+      output[targetOffset] = Math.round(red / count);
+      output[targetOffset + 1] = Math.round(green / count);
+      output[targetOffset + 2] = Math.round(blue / count);
+      output[targetOffset + 3] = Math.round(alpha / count);
+    }
+  }
+
+  return output;
+}
+
+function boxBlurVertical(pixels: Uint8ClampedArray, width: number, height: number, radius: number): Uint8ClampedArray {
+  const output = new Uint8ClampedArray(pixels.length);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let alpha = 0;
+      let count = 0;
+
+      for (let sy = Math.max(0, y - radius); sy <= Math.min(height - 1, y + radius); sy += 1) {
+        const offset = (sy * width + x) * 4;
+        red += pixels[offset];
+        green += pixels[offset + 1];
+        blue += pixels[offset + 2];
+        alpha += pixels[offset + 3];
+        count += 1;
+      }
+
+      const targetOffset = (y * width + x) * 4;
+      output[targetOffset] = Math.round(red / count);
+      output[targetOffset + 1] = Math.round(green / count);
+      output[targetOffset + 2] = Math.round(blue / count);
+      output[targetOffset + 3] = Math.round(alpha / count);
+    }
+  }
+
+  return output;
 }
 
 function offsetPolygons(polygons: readonly Point[][], offsetX: number, offsetY: number): Point[][] {

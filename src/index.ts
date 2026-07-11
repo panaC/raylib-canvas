@@ -92,6 +92,8 @@ export class Canvas {
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-canvas-toblob-dev
    */
   toBlob(callback: (blob: Blob | null) => void, type = "image/png", _quality?: number): void {
+    this.#assertNoOpenLayersForEncoding();
+
     queueMicrotask(() => {
       const encoded = this.#encodeImage(type);
       callback(new Blob([toArrayBuffer(encoded.bytes)], { type: encoded.type }));
@@ -110,6 +112,8 @@ export class Canvas {
   #encodeImage(_type: string): { type: "image/png"; bytes: Uint8Array } {
     const context = this.getContext("2d");
 
+    this.#assertNoOpenLayersForEncoding();
+
     return {
       type: "image/png",
       bytes: this.#pngEncoder.encode({
@@ -118,6 +122,12 @@ export class Canvas {
         data: context.getPixels()
       })
     };
+  }
+
+  #assertNoOpenLayersForEncoding(): void {
+    if (this.getContext("2d").hasOpenLayers()) {
+      throw createInvalidStateError("Canvas cannot be encoded while layers are open.");
+    }
   }
 }
 
@@ -161,6 +171,16 @@ function assertPositiveInteger(value: number, label: string): void {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${label} must be a positive integer`);
   }
+}
+
+function createInvalidStateError(message: string): Error {
+  if (typeof DOMException === "function") {
+    return new DOMException(message, "InvalidStateError");
+  }
+
+  const error = new Error(message);
+  error.name = "InvalidStateError";
+  return error;
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {

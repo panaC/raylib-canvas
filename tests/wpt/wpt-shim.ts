@@ -22,6 +22,9 @@ const backings = new WeakMap<HTMLCanvasElement, BackingCanvas>();
 const wrappers = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
 const contextBackend = process.env.RAYLIB_CANVAS_CONTEXT;
 
+const originalCreateImageBitmap = globalThis.createImageBitmap?.bind(globalThis);
+const originalCanvasDrawImage = CanvasRenderingContext2D.prototype.drawImage;
+const originalOffscreenCanvasDrawImage = globalThis.OffscreenCanvasRenderingContext2D?.prototype.drawImage;
 const originalSetAttribute = Element.prototype.setAttribute;
 const originalRemoveAttribute = Element.prototype.removeAttribute;
 
@@ -53,6 +56,38 @@ HTMLCanvasElement.prototype.toDataURL = function patchedToDataURL(
 ): string {
   return getOrCreateBacking(this).canvas.toDataURL(type, quality as number | undefined);
 };
+
+if (originalCreateImageBitmap) {
+  globalThis.createImageBitmap = function patchedCreateImageBitmap(image: ImageBitmapSource, ...args: unknown[]): Promise<ImageBitmap> {
+    try {
+      assertCanvasImageSourceHasNoOpenLayers(image);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+
+    return originalCreateImageBitmap(image, ...(args as []));
+  } as typeof createImageBitmap;
+}
+
+CanvasRenderingContext2D.prototype.drawImage = function patchedNativeCanvasDrawImage(
+  this: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  ...args: unknown[]
+): void {
+  assertCanvasImageSourceHasNoOpenLayers(image);
+  return originalCanvasDrawImage.call(this, image, ...(args as []));
+} as typeof CanvasRenderingContext2D.prototype.drawImage;
+
+if (originalOffscreenCanvasDrawImage && globalThis.OffscreenCanvasRenderingContext2D) {
+  globalThis.OffscreenCanvasRenderingContext2D.prototype.drawImage = function patchedNativeOffscreenCanvasDrawImage(
+    this: OffscreenCanvasRenderingContext2D,
+    image: CanvasImageSource,
+    ...args: unknown[]
+  ): void {
+    assertCanvasImageSourceHasNoOpenLayers(image);
+    return originalOffscreenCanvasDrawImage.call(this, image, ...(args as []));
+  } as typeof OffscreenCanvasRenderingContext2D.prototype.drawImage;
+}
 
 patchCanvasDimension("width");
 patchCanvasDimension("height");
@@ -210,6 +245,12 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
 
 function getCurrentContext(domCanvas: HTMLCanvasElement): Raylib2DContext {
   return getOrCreateBacking(domCanvas).context;
+}
+
+function assertCanvasImageSourceHasNoOpenLayers(image: unknown): void {
+  if (image instanceof HTMLCanvasElement && getCurrentContext(image).hasOpenLayers()) {
+    throw new DOMException("Canvas cannot be used as an image source while layers are open.", "InvalidStateError");
+  }
 }
 
 function getOrCreateBacking(domCanvas: HTMLCanvasElement): BackingCanvas {
