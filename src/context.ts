@@ -1290,6 +1290,10 @@ export class CanvasGradient {
   }
 
   addColorStop(offset: number, color: string): void {
+    if (arguments.length < 2) {
+      throw new TypeError("addColorStop() requires an offset and color.");
+    }
+
     const stopOffset = Number(offset);
 
     if (!Number.isFinite(stopOffset)) {
@@ -2047,12 +2051,19 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   }
 
   strokeRect(x: number, y: number, width: number, height: number): void {
-    if (![x, y, width, height].every(Number.isFinite) || width === 0 || height === 0) {
+    if (![x, y, width, height].every(Number.isFinite) || (width === 0 && height === 0)) {
       return;
     }
 
     const path = new CanvasPath2D();
-    path.rect(x, y, width, height);
+    if (width === 0 || height === 0) {
+      path.moveTo(x, y);
+      path.lineTo(x + width, y + height);
+      path.lineTo(x, y);
+      path.closePath();
+    } else {
+      path.rect(x, y, width, height);
+    }
     this.#drawShadowStroke(path);
     this.#strokePath(path);
   }
@@ -3169,7 +3180,7 @@ function strokeSubpath(
         break;
       }
 
-      if (!hit) {
+      if (!hit && options.lineJoin === "round") {
         hit = hitsRoundJoin(point, subpath, radius, dash, dashTotal, options.lineDashOffset, pathLength);
       }
 
@@ -3216,7 +3227,7 @@ function distanceToStrokedSegment(
   const start = -firstExtension;
   const end = 1 + lastExtension;
 
-  if (lineCap !== "round" && (rawT < start || rawT > end)) {
+  if ((closed || lineCap !== "round") && (rawT < start || rawT > end)) {
     return Number.POSITIVE_INFINITY;
   }
 

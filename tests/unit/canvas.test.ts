@@ -126,6 +126,7 @@ describe("createCanvas", () => {
     expect(gradient).toBe(ctx.fillStyle = gradient);
     expect(() => ctx.createLinearGradient(0, 0, Number.NaN, 0)).toThrow(/finite/i);
     expect(() => gradient.addColorStop(-0.1, "red")).toThrow(/offset/i);
+    expect(() => (gradient.addColorStop as (offset: number) => void)(0.5)).toThrow(TypeError);
     expect(() => gradient.addColorStop(0.5, "not-a-color")).toThrow(/color/i);
 
     gradient.addColorStop(0, "red");
@@ -918,13 +919,18 @@ describe("createCanvas", () => {
     expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
   });
 
-  it("does not stroke zero-sized or non-finite rectangles", async () => {
+  it("strokes one-dimensional rectangles but ignores 0x0 or non-finite rectangles", async () => {
     const canvas = await createTestCanvas(4, 4);
     const ctx = canvas.getContext("2d");
 
     ctx.strokeStyle = "red";
     ctx.strokeRect(0, 0, 3, 0);
     ctx.strokeRect(0, 0, 0, 3);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+
+    ctx.clearRect(0, 0, 4, 4);
+    ctx.strokeRect(0, 0, 0, 0);
     ctx.strokeRect(Number.NaN, 0, 3, 3);
     ctx.strokeRect(0, Number.POSITIVE_INFINITY, 3, 3);
 

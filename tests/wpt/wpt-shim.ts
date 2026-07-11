@@ -31,6 +31,28 @@ const originalCanvasDrawImage = CanvasRenderingContext2D.prototype.drawImage;
 const originalOffscreenCanvasDrawImage = globalThis.OffscreenCanvasRenderingContext2D?.prototype.drawImage;
 const originalSetAttribute = Element.prototype.setAttribute;
 const originalRemoveAttribute = Element.prototype.removeAttribute;
+const requiredArgumentCounts = new Map<string | symbol, number>([
+  ["arc", 5],
+  ["arcTo", 5],
+  ["bezierCurveTo", 6],
+  ["clearRect", 4],
+  ["createLinearGradient", 4],
+  ["createPattern", 2],
+  ["createRadialGradient", 6],
+  ["fillRect", 4],
+  ["getImageData", 4],
+  ["isPointInPath", 2],
+  ["lineTo", 2],
+  ["measureText", 1],
+  ["moveTo", 2],
+  ["quadraticCurveTo", 4],
+  ["rect", 4],
+  ["rotate", 1],
+  ["scale", 2],
+  ["strokeRect", 4],
+  ["translate", 2],
+  ["transform", 6]
+]);
 
 HTMLCanvasElement.prototype.getContext = function patchedGetContext(
   this: HTMLCanvasElement,
@@ -181,13 +203,18 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
 
         if (property === "getImageData") {
           return (...args: unknown[]) => {
+            assertMinimumArguments(property, args.length);
             const [sx, sy, sw, sh, settings] = args as [number, number, number, number, ImageDataSettings | undefined];
+            if (Math.abs(Number(sw)) * Math.abs(Number(sh)) > 0x1fffffff) {
+              throw new TypeError("getImageData() dimensions are too large.");
+            }
             return toBrowserImageData(getCurrentContext(domCanvas).getImageData(sx, sy, sw, sh, settings));
           };
         }
 
         if (property === "createImageData") {
           return (...args: unknown[]) => {
+            assertMinimumArguments(property, args.length);
             const context = getCurrentContext(domCanvas);
             const imageData =
               args[0] instanceof ImageData
@@ -199,6 +226,7 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
 
         if (property === "putImageData") {
           return (...args: unknown[]) => {
+            assertMinimumArguments(property, args.length);
             const [imageData, dx, dy, dirtyX, dirtyY, dirtyWidth, dirtyHeight] = args as [
               ImageData | CanvasImageData,
               number,
@@ -224,7 +252,12 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
 
         if (property === "drawImage") {
           return (...args: unknown[]) => {
+            assertDrawImageArguments(args.length);
             const [image, ...drawArgs] = args;
+            if (image instanceof HTMLImageElement && isZeroSizedDrawImage(drawArgs)) {
+              return undefined;
+            }
+
             const context = getCurrentContext(domCanvas);
             const result = context.drawImage(toCanvasImageSource(image), ...(drawArgs as number[]));
             syncVisibleCanvas(domCanvas);
@@ -252,6 +285,7 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
         }
 
         return (...args: unknown[]) => {
+          assertContextMethodArguments(property, args.length);
           const result = value.apply(context, args);
           syncVisibleCanvas(domCanvas);
           return result;
@@ -320,6 +354,54 @@ function getUserPrototypeValue(wrapper: CanvasRenderingContext2D, property: stri
   }
 
   return descriptor.get?.call(wrapper);
+}
+
+function assertContextMethodArguments(property: string | symbol, length: number): void {
+  if (property === "setTransform") {
+    if (length !== 0 && length !== 6) {
+      throw new TypeError("setTransform() requires either zero or six arguments.");
+    }
+    return;
+  }
+
+  if (property === "createImageData") {
+    if (length === 0 || length === 1) {
+      throw new TypeError("createImageData() requires an ImageData object or width and height arguments.");
+    }
+    return;
+  }
+
+  if (property === "putImageData") {
+    assertMinimumArguments(property, length);
+    return;
+  }
+
+  assertMinimumArguments(property, length);
+}
+
+function assertMinimumArguments(property: string | symbol, length: number): void {
+  const required = requiredArgumentCounts.get(property);
+  if (required !== undefined && length < required) {
+    throw new TypeError(`${String(property)}() requires at least ${required} arguments.`);
+  }
+}
+
+function assertDrawImageArguments(length: number): void {
+  if (length !== 3 && length !== 5 && length !== 9) {
+    throw new TypeError("drawImage() requires 3, 5, or 9 arguments.");
+  }
+}
+
+function isZeroSizedDrawImage(args: unknown[]): boolean {
+  if (args.length === 4) {
+    return args[2] === 0 || args[3] === 0;
+  }
+
+  if (args.length === 8) {
+    return args[6] === 0 || args[7] === 0;
+  }
+
+  return false;
 }
 
 function getCurrentContext(domCanvas: HTMLCanvasElement): Raylib2DContext {
@@ -397,6 +479,10 @@ function toBrowserImageData(imageData: CanvasImageData): ImageData | CanvasImage
 function toCanvasImageData(imageData: ImageData | CanvasImageData): CanvasImageData {
   if (imageData instanceof CanvasImageData) {
     return imageData;
+  }
+
+  if (!(imageData instanceof ImageData)) {
+    throw new TypeError("Expected ImageData.");
   }
 
   return new CanvasImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height, {

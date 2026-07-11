@@ -22,6 +22,61 @@
       "reason": "Depends on HTML media/image loading host behavior."
     },
     {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/manual/draw-element-image/",
+      "reason": "Depends on DOM element capture, layout, paint invalidation, hit testing, privacy tainting, or browser top-layer behavior outside createCanvas()."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/manual/imagebitmap/",
+      "reason": "Depends on browser ImageBitmap, Blob/image/video decoding, transfer, worker, or ImageBitmapRenderingContext host behavior."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/manual/context-attributes/",
+      "reason": "Depends on browser canvas context attributes such as alpha and getContextAttributes() host behavior outside the current createCanvas() facade."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/manual/drawing-images-to-the-canvas/",
+      "reason": "Depends on HTMLImageElement, SVG/image decoding, cross-origin tainting, Blob/ImageBitmap sources, or image-orientation host behavior."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/global-hdr-headroom/",
+      "reason": "Depends on browser HDR metadata/image decoding and global HDR headroom host behavior."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/canvas-css-random.html",
+      "reason": "Depends on browser CSS/layout integration for canvas elements."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/canvas-sibling-index-crash.html",
+      "reason": "Depends on browser DOM sibling/layout crash coverage outside createCanvas()."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/color.window.js",
+      "reason": "Depends on browser color/input plumbing outside the current Canvas 2D package surface."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/element/2d.text-outside-of-the-flat-tree.html",
+      "reason": "Depends on DOM flat-tree and font/layout integration outside createCanvas()."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/historical.",
+      "reason": "Depends on browser historical global interface exposure beyond this package's createCanvas() facade."
+    },
+    {
+      "status": "unsupported-host",
+      "prefix": "html/canvas/text-metrics-for-unpaintable-crash.html",
+      "reason": "Depends on browser DOM/font/layout crash behavior outside deterministic text metrics fallback."
+    },
+    {
       "status": "blocked",
       "prefix": "html/canvas/element/drawing-paths-to-the-canvas/",
       "reason": "Path construction and simple fill/stroke behavior have smoke coverage; broader pixel-accurate path rendering, clipping, and hit testing remain incomplete."
@@ -34,7 +89,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/line-styles/",
-      "reason": "Stroke state and line styling are not implemented yet."
+      "reason": "Line state, cap rendering, selected join/miter rendering, invalid stroke-style no-op behavior, and basic stroke width behavior have smoke coverage; remaining tests require exact join, miter, cross-line, and transformed stroke raster fidelity."
     },
     {
       "status": "blocked",
@@ -74,17 +129,17 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/fill-and-stroke-styles/",
-      "reason": "A small color subset, gradient objects, and canvas-backed patterns have smoke/unit coverage; broad CSS color parsing, exact gradient fidelity, image-backed patterns, and pattern transforms remain incomplete."
+      "reason": "Hex parsing, invalid color retention, gradient object behavior, and canvas-backed pattern/repetition validation have smoke/unit coverage; broad CSS color parsing, exact gradient fidelity, image-backed patterns, and pattern transforms remain incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/pixel-manipulation/",
-      "reason": "getImageData(), createImageData(), and putImageData() have basic smoke/unit coverage for sRGB unorm8 data; wide-gamut color spaces, float16 pixel data, ImageData constructor parity, and broader edge cases remain incomplete."
+      "reason": "getImageData(), createImageData(), ImageData object behavior, and putImageData() have broad smoke/unit coverage for sRGB unorm8 data; ImageBitmap round-trips, wide-gamut color spaces, and float16 pixel data remain incomplete."
     },
     {
       "status": "blocked",
       "prefix": "html/canvas/element/drawing-rectangles-to-the-canvas/",
-      "reason": "fillRect()/clearRect()/strokeRect() basics, transforms, and simple shadow interaction have coverage; clipping, filters, broader shadows, and remaining edge cases are incomplete."
+      "reason": "The full upstream rectangle drawing directory is smoke-gated; remaining classification is kept for future upstream additions that may depend on filters, broader shadows, or exact raster edge cases."
     },
     {
       "status": "blocked",
@@ -103,8 +158,78 @@
     },
     {
       "status": "blocked",
+      "prefix": "html/canvas/element/manual/compositing/",
+      "reason": "Depends on broader filter, shadow, COLR glyph, and compositing pixel fidelity beyond current smoke coverage."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/drawing-paths-to-the-canvas/",
+      "reason": "Depends on drawFocusIfNeeded() or path rendering edge cases not implemented in the current Canvas 2D surface."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/drawing-text-to-the-canvas/",
+      "reason": "Depends on browser font loading, MathML/disconnected-tree font behavior, and exact text rendering."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/fill-and-stroke-styles/",
+      "reason": "Depends on currentColor rendering, exact conic gradient fidelity, image/video patterns, or cross-origin tainting behavior."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/filters/",
+      "reason": "Depends on full CSS/SVG filter rendering, CanvasFilter objects, visited-color tainting, or browser-exact filter fidelity."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/image-smoothing/",
+      "reason": "Depends on visual image smoothing quality/reference fidelity beyond current nearest/bilinear drawImage sampling."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/layers/",
+      "reason": "Depends on browser behavior for unclosed canvas layers at presentation time."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/line-styles/",
+      "reason": "Depends on exact line dash/line rendering reference fidelity beyond current unit and smoke coverage."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/shadows/",
+      "reason": "Depends on system colors or browser-exact Gaussian shadow blur fidelity."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/text/",
+      "reason": "Depends on DOM direction/language inheritance, font stretch rendering, and browser-exact text shaping/layout."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/the-canvas-state/",
+      "reason": "Depends on browser canvas element sizing behavior beyond current save/restore state smoke coverage."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/transformations/",
+      "reason": "Depends on manual/reference transformation rendering fidelity beyond current automated transform smoke coverage."
+    },
+    {
+      "status": "blocked",
       "prefix": "html/canvas/element/wide-gamut-canvas/",
       "reason": "Canvas color space and color type options are not implemented yet."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/manual/wide-gamut-canvas/",
+      "reason": "Depends on display-p3 canvas, ImageBitmap, image/video decoding, and color-managed ImageData fidelity."
+    },
+    {
+      "status": "blocked",
+      "prefix": "html/canvas/element/2d.putImageData.html",
+      "reason": "Depends on broader ImageData constructor/color settings behavior than the current sRGB unorm8 smoke coverage."
     },
     {
       "status": "blocked",

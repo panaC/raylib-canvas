@@ -49,23 +49,33 @@ covers official upstream files for:
 - canvas context existence, context sharing/cache behavior, invalid argument
   handling, unique context instances, type exposure, and prototype
   extension/replacement behavior
-- `fillRect()` basic, negative-size, zero-size, and non-finite drawing
+- generated Canvas 2D conformance checks for basic API shape, deletion
+  behavior, void-method return values, and missing-argument `TypeError`
+  behavior
+- the full upstream `html/canvas/element/the-canvas-state/` save/restore
+  directory, including bitmap, clipping, path, transform, stack depth,
+  underflow, and implemented drawing-state restoration behavior
+- `fillRect()` basic, negative-size, zero-size, non-finite, clipping, shadow,
+  path-isolation, and transform drawing
 - `clearRect()` basic, negative-size, zero-size, non-finite clearing, and
-  immunity from `globalAlpha`/`globalCompositeOperation`
+  immunity from `globalAlpha`/`globalCompositeOperation`, plus clipping,
+  path-isolation, shadow, and transform behavior
 - `globalAlpha` defaults, invalid/range assignment behavior, and filled
   rectangle rendering
 - `globalCompositeOperation` defaults, accepted core operation strings,
   invalid assignment behavior, and solid filled rectangle rendering for core
   Porter-Duff modes plus `lighter` and `clear`
-- `fillStyle` hex parsing and invalid-name retention
+- `fillStyle` hex parsing and invalid-name/invalid-hex retention
 - `strokeStyle` default state, plus unit coverage for supported color parsing
   and invalid assignment retention
-- `CanvasGradient` constructor exposure, object return shape, color-stop
-  validation, non-finite linear gradient validation, negative radial radius
-  validation, and unit coverage for linear/radial/conic rectangle rendering
+- `CanvasGradient` constructor exposure, object return shape, object identity
+  and cross-canvas behavior, color-stop validation, non-finite linear/radial
+  gradient validation, negative radial radius validation, update behavior, and
+  unit coverage for linear/radial/conic rectangle rendering
 - canvas-backed `CanvasPattern` creation, invalid repetition errors, and unit
-  coverage for repeat and no-repeat painting; image-backed patterns remain
-  partial until broader CanvasImageSource support lands
+  coverage for repeat and no-repeat painting; more repetition validation is
+  smoke-gated, while image-backed patterns remain partial until broader
+  CanvasImageSource support lands
 - shadow offset, blur, and color default/valid/invalid assignment behavior,
   plus smoke/unit coverage for simple shadow rendering; blurred shadow raster
   fidelity remains partial
@@ -92,8 +102,10 @@ covers official upstream files for:
   source cropping, transforms, alpha, compositing, and nearest-neighbor
   smoothing. Broader WPT coverage remains blocked on host image sources such as
   `ImageBitmap`, `HTMLImageElement`, and decoded image resources
-- line style defaults and valid/invalid assignment behavior for `lineWidth`,
-  `lineCap`, `lineJoin`, and `miterLimit`
+- line style defaults, valid/invalid assignment behavior, line cap rendering,
+  selected join/miter rendering, invalid stroke-style no-op behavior, and
+  basic stroke width rendering for `lineWidth`, `lineCap`, `lineJoin`, and
+  `miterLimit`
 - line dash state behavior is covered by unit tests; the current upstream
   `setLineDash()` WPT also requires `strokeRect()` rendering, which is not part
   of the smoke suite yet
@@ -108,12 +120,15 @@ covers official upstream files for:
   `fontKerning` WPT also requires `measureText()` metrics, which are not part
   of the smoke suite yet
 - `getImageData()` basic reads, out-of-bounds transparent pixels, zero-size
-  errors, negative-size reads, and non-finite argument errors
+  errors, negative-size reads, non-finite argument errors, type/rounding/range
+  behavior, channel ordering, non-premultiplied reads, and large-allocation
+  error behavior
 - `createImageData()` basic two-argument and clone creation, transparent
-  initial data, negative dimensions, and `srgb` settings behavior
+  initial data, negative dimensions, numeric conversion behavior, object
+  constructor parity, and `srgb` settings behavior
 - `putImageData()` basic writes, dirty-rectangle clipping, zero dirty
-  rectangles, out-of-bounds clipping, and unit coverage that transforms,
-  global alpha, and compositing are ignored
+  rectangles, out-of-bounds clipping, alpha/non-finite/wrong-type behavior,
+  and unit coverage that transforms, global alpha, and compositing are ignored
 - `imageSmoothingEnabled` and `imageSmoothingQuality` default, assignment, and
   save/restore behavior; quality is stored as a hint, while rendering currently
   switches between nearest-neighbor and bilinear smoothing
