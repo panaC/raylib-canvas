@@ -173,7 +173,7 @@ export interface Canvas2DContext {
    * Filter applied to drawing operations.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-filter-dev
    */
-  filter: string;
+  filter: string | object;
 
   /**
    * Returns the live RGBA backing pixels for encoding and diagnostics.
@@ -529,7 +529,7 @@ type CanvasLayerOptions = {
 };
 
 type ParsedCanvasFilter = {
-  readonly serialized: string;
+  readonly serialized: string | object;
   readonly opacity: number;
   readonly operations: readonly CanvasFilterOperation[];
 };
@@ -537,7 +537,19 @@ type ParsedCanvasFilter = {
 type CanvasFilterOperation =
   | { readonly type: "opacity"; readonly amount: number }
   | { readonly type: "blur"; readonly stdDeviationX: number; readonly stdDeviationY: number }
-  | { readonly type: "dropShadow"; readonly dx: number; readonly dy: number; readonly stdDeviationX: number; readonly stdDeviationY: number; readonly color: Rgba };
+  | { readonly type: "dropShadow"; readonly dx: number; readonly dy: number; readonly stdDeviationX: number; readonly stdDeviationY: number; readonly color: Rgba }
+  | { readonly type: "colorMatrix"; readonly values: readonly number[] }
+  | { readonly type: "componentTransfer"; readonly funcs: readonly ComponentTransferFunc[] };
+
+type ComponentTransferFunc = {
+  readonly type: "identity" | "linear" | "gamma" | "table" | "discrete";
+  readonly slope?: number;
+  readonly intercept?: number;
+  readonly amplitude?: number;
+  readonly exponent?: number;
+  readonly offset?: number;
+  readonly tableValues?: readonly number[];
+};
 
 type Matrix2D = readonly [number, number, number, number, number, number];
 
@@ -599,7 +611,7 @@ type CanvasState = {
   readonly textRendering: CanvasTextRendering;
   readonly imageSmoothingEnabled: boolean;
   readonly imageSmoothingQuality: CanvasImageSmoothingQuality;
-  readonly filter: string;
+  readonly filter: string | object;
   readonly filterOpacity: number;
   readonly filterOperations: readonly CanvasFilterOperation[];
   readonly shadowOffsetX: number;
@@ -1403,7 +1415,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #fontStretch: CanvasFontStretch = "normal";
   #fontVariantCaps: CanvasFontVariantCaps = "normal";
   #textRendering: CanvasTextRendering = "auto";
-  #filter = "none";
+  #filter: string | object = "none";
   #filterOpacity = 1;
   #filterOperations: readonly CanvasFilterOperation[] = [];
   #shadowOffsetX = 0;
@@ -1758,12 +1770,12 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#shadowRgba = color.rgba;
   }
 
-  get filter(): string {
+  get filter(): string | object {
     return this.#filter;
   }
 
-  set filter(value: string) {
-    const filter = parseCanvasFilter(String(value));
+  set filter(value: string | object) {
+    const filter = typeof value === "object" && value !== null ? parseCanvasFilterObject(value) : parseCanvasFilter(String(value));
 
     if (!filter) {
       return;
@@ -2047,6 +2059,10 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   }
 
   fillRect(x: number, y: number, width: number, height: number): void {
+    if (this.#filterOperations.length > 0 && !isOnlyOpacityFilter(this.#filterOperations) && this.#fillFilteredRect(x, y, width, height)) {
+      return;
+    }
+
     this.#drawShadowRect(x, y, width, height);
     this.#fillTransformedRect(x, y, width, height, this.#paintFor(this.#fillPaint));
   }
@@ -2630,6 +2646,40 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       this.#globalCompositeOperation,
       this.fillRule
     );
+  }
+
+  #fillFilteredRect(x: number, y: number, width: number, height: number): boolean {
+    if (![x, y, width, height].every(Number.isFinite) || !isIdentityMatrix(this.#transform) || this.#clipMask) {
+      return false;
+    }
+
+    const temp = new Uint8ClampedArray(this.canvas.width * this.canvas.height * 4);
+    const x2 = x + width;
+    const y2 = y + height;
+    const left = clamp(Math.trunc(Math.min(x, x2)), 0, this.canvas.width);
+    const top = clamp(Math.trunc(Math.min(y, y2)), 0, this.canvas.height);
+    const right = clamp(Math.trunc(Math.max(x, x2)), 0, this.canvas.width);
+    const bottom = clamp(Math.trunc(Math.max(y, y2)), 0, this.canvas.height);
+
+    for (let py = top; py < bottom; py += 1) {
+      for (let px = left; px < right; px += 1) {
+        const color = applyAlpha(sampleCanvasPaintStyle(this.#fillPaint, px + 0.5, py + 0.5), this.#globalAlpha);
+        if (color[3] !== 0) {
+          compositePixel(temp, (py * this.canvas.width + px) * 4, color, "source-over");
+        }
+      }
+    }
+
+    const filtered = applyCanvasFilterOperations(temp, this.canvas.width, this.canvas.height, this.#filterOperations, this.#transform);
+    const pixels = this.getPixels();
+
+    for (let offset = 0; offset < filtered.length; offset += 4) {
+      if (filtered[offset + 3] !== 0) {
+        compositePixel(pixels, offset, [filtered[offset], filtered[offset + 1], filtered[offset + 2], filtered[offset + 3]], this.#globalCompositeOperation);
+      }
+    }
+
+    return true;
   }
 
   #fillRectPixels(x: number, y: number, width: number, height: number, paint: Paint): void {
@@ -4366,23 +4416,38 @@ function parseCanvasFilterObject(value: unknown): ParsedCanvasFilter | undefined
     return undefined;
   }
 
+  const filterOperations = (value as { readonly __raylibCanvasFilterOperations?: unknown }).__raylibCanvasFilterOperations;
+  if (Array.isArray(filterOperations)) {
+    return combineParsedFilters(filterOperations.map(parseCanvasFilterObject).filter((filter): filter is ParsedCanvasFilter => filter !== undefined), value);
+  }
+
   const record = value as Record<string, unknown>;
   const name = String(record.name ?? "");
 
   if (name === "gaussianBlur") {
+    if (record.stdDeviation === undefined) {
+      throw new TypeError("CanvasFilter gaussianBlur stdDeviation is required.");
+    }
     const [stdDeviationX, stdDeviationY] = parseFilterStdDeviation(record.stdDeviation);
     return {
-      serialized: "blur()",
+      serialized: value,
       opacity: 1,
       operations: [{ type: "blur", stdDeviationX, stdDeviationY }]
     };
   }
 
   if (name === "dropShadow") {
+    if (hasNonFiniteNumber(record.dx) || hasNonFiniteNumber(record.dy) || hasNonFiniteNumber(record.floodOpacity)) {
+      throw new TypeError("CanvasFilter dropShadow numeric values must be finite.");
+    }
     const [stdDeviationX, stdDeviationY] = parseFilterStdDeviation(record.stdDeviation ?? 0);
-    const color: Rgba = record.floodColor === undefined ? [0, 0, 0, 255] : parseColor(String(record.floodColor))?.rgba ?? [0, 0, 0, 255];
+    const floodOpacity = clamp(Number(record.floodOpacity ?? 1), 0, 1);
+    const color: Rgba = applyAlpha(
+      record.floodColor === undefined ? [0, 0, 0, 255] : parseColor(String(record.floodColor))?.rgba ?? [0, 0, 238, 255],
+      floodOpacity
+    );
     return {
-      serialized: "drop-shadow()",
+      serialized: value,
       opacity: 1,
       operations: [
         {
@@ -4397,20 +4462,37 @@ function parseCanvasFilterObject(value: unknown): ParsedCanvasFilter | undefined
     };
   }
 
-  if (name === "colorMatrix" && !isValidColorMatrixValues(record.values)) {
-    throw new TypeError("CanvasFilter colorMatrix values must be numeric.");
+  if (name === "colorMatrix") {
+    const matrix = parseColorMatrixFilter(record);
+    return {
+      serialized: value,
+      opacity: 1,
+      operations: [{ type: "colorMatrix", values: matrix }]
+    };
+  }
+
+  if (name === "componentTransfer") {
+    return {
+      serialized: value,
+      opacity: 1,
+      operations: [{ type: "componentTransfer", funcs: parseComponentTransferFilter(record) }]
+    };
+  }
+
+  if (name === "convolveMatrix" || name === "turbulence") {
+    throw new TypeError(`CanvasFilter ${name} is not supported.`);
   }
 
   return undefined;
 }
 
-function combineParsedFilters(filters: readonly ParsedCanvasFilter[]): ParsedCanvasFilter | undefined {
+function combineParsedFilters(filters: readonly ParsedCanvasFilter[], serialized?: object): ParsedCanvasFilter | undefined {
   if (filters.length === 0) {
     return undefined;
   }
 
   return {
-    serialized: filters.map((filter) => filter.serialized).join(" "),
+    serialized: serialized ?? filters.map((filter) => filter.serialized).join(" "),
     opacity: filters.reduce((opacity, filter) => opacity * filter.opacity, 1),
     operations: filters.flatMap((filter) => filter.operations)
   };
@@ -4529,6 +4611,157 @@ function isValidColorMatrixValues(value: unknown): boolean {
   return Array.isArray(value) && value.length === 20 && value.every((entry) => Number.isFinite(Number(entry)));
 }
 
+function parseColorMatrixFilter(record: Record<string, unknown>): readonly number[] {
+  const type = record.type === undefined ? "matrix" : String(record.type);
+
+  if (type === "matrix") {
+    if (!isValidColorMatrixValues(record.values)) {
+      throw new TypeError("CanvasFilter colorMatrix values must be numeric.");
+    }
+    return (record.values as readonly unknown[]).map(Number);
+  }
+
+  if (type === "hueRotate") {
+    const angle = Number(record.values ?? 0);
+    if (!Number.isFinite(angle)) {
+      throw new TypeError("CanvasFilter hueRotate value must be finite.");
+    }
+    return hueRotateMatrix(angle);
+  }
+
+  if (type === "saturate") {
+    const amount = Number(record.values ?? 1);
+    if (!Number.isFinite(amount)) {
+      throw new TypeError("CanvasFilter saturate value must be finite.");
+    }
+    return saturateMatrix(amount);
+  }
+
+  if (type === "luminanceToAlpha") {
+    return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2125, 0.7154, 0.0721, 0, 0];
+  }
+
+  throw new TypeError("Unsupported CanvasFilter colorMatrix type.");
+}
+
+function parseComponentTransferFilter(record: Record<string, unknown>): readonly ComponentTransferFunc[] {
+  return ["funcR", "funcG", "funcB", "funcA"].map((key) => parseComponentTransferFunc(record[key]));
+}
+
+function parseComponentTransferFunc(value: unknown): ComponentTransferFunc {
+  if (value === undefined) {
+    return { type: "identity" };
+  }
+
+  if (value === null || typeof value !== "object") {
+    throw new TypeError("CanvasFilter componentTransfer functions must be objects.");
+  }
+
+  const record = value as Record<string, unknown>;
+  const type = String(record.type ?? "identity") as ComponentTransferFunc["type"];
+
+  if (type === "identity") {
+    return { type };
+  }
+
+  if (type === "linear") {
+    return { type, slope: finiteOrDefault(record.slope, 1), intercept: finiteOrDefault(record.intercept, 0) };
+  }
+
+  if (type === "gamma") {
+    return {
+      type,
+      amplitude: finiteOrDefault(record.amplitude, 1),
+      exponent: finiteOrDefault(record.exponent, 1),
+      offset: finiteOrDefault(record.offset, 0)
+    };
+  }
+
+  if (type === "table" || type === "discrete") {
+    return { type, tableValues: parseNumberList(record.tableValues) };
+  }
+
+  throw new TypeError("Unsupported CanvasFilter componentTransfer type.");
+}
+
+function parseNumberList(value: unknown): readonly number[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new TypeError("CanvasFilter tableValues must be a non-empty numeric array.");
+  }
+
+  const numbers = value.map(Number);
+  if (numbers.some((number) => !Number.isFinite(number))) {
+    throw new TypeError("CanvasFilter tableValues must be finite.");
+  }
+
+  return numbers;
+}
+
+function finiteOrDefault(value: unknown, fallback: number): number {
+  const number = Number(value ?? fallback);
+  if (!Number.isFinite(number)) {
+    throw new TypeError("CanvasFilter numeric values must be finite.");
+  }
+  return number;
+}
+
+function hasNonFiniteNumber(value: unknown): boolean {
+  return value !== undefined && !Number.isFinite(Number(value));
+}
+
+function hueRotateMatrix(angleDegrees: number): readonly number[] {
+  const angle = (angleDegrees * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [
+    0.213 + cos * 0.787 - sin * 0.213,
+    0.715 - cos * 0.715 - sin * 0.715,
+    0.072 - cos * 0.072 + sin * 0.928,
+    0,
+    0,
+    0.213 - cos * 0.213 + sin * 0.143,
+    0.715 + cos * 0.285 + sin * 0.14,
+    0.072 - cos * 0.072 - sin * 0.283,
+    0,
+    0,
+    0.213 - cos * 0.213 - sin * 0.787,
+    0.715 - cos * 0.715 + sin * 0.715,
+    0.072 + cos * 0.928 + sin * 0.072,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0
+  ];
+}
+
+function saturateMatrix(amount: number): readonly number[] {
+  return [
+    0.213 + 0.787 * amount,
+    0.715 - 0.715 * amount,
+    0.072 - 0.072 * amount,
+    0,
+    0,
+    0.213 - 0.213 * amount,
+    0.715 + 0.285 * amount,
+    0.072 - 0.072 * amount,
+    0,
+    0,
+    0.213 - 0.213 * amount,
+    0.715 - 0.715 * amount,
+    0.072 + 0.928 * amount,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0
+  ];
+}
+
 function applyAlpha(color: Rgba, alpha: number): Rgba {
   if (alpha === 1) {
     return color;
@@ -4557,10 +4790,24 @@ function applyCanvasFilterOperations(
       continue;
     }
 
-    output = applyDropShadowFilter(output, width, height, operation, filterTransform);
+    if (operation.type === "dropShadow") {
+      output = applyDropShadowFilter(output, width, height, operation, filterTransform);
+      continue;
+    }
+
+    if (operation.type === "colorMatrix") {
+      output = applyColorMatrixFilter(output, operation.values);
+      continue;
+    }
+
+    output = applyComponentTransferFilter(output, operation.funcs);
   }
 
   return output;
+}
+
+function isOnlyOpacityFilter(operations: readonly CanvasFilterOperation[]): boolean {
+  return operations.every((operation) => operation.type === "opacity");
 }
 
 function applyOpacityFilter(pixels: Uint8ClampedArray, amount: number): Uint8ClampedArray {
@@ -4571,6 +4818,64 @@ function applyOpacityFilter(pixels: Uint8ClampedArray, amount: number): Uint8Cla
   }
 
   return output;
+}
+
+function applyColorMatrixFilter(pixels: Uint8ClampedArray, matrix: readonly number[]): Uint8ClampedArray {
+  const output = new Uint8ClampedArray(pixels.length);
+
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    const r = pixels[offset] / 255;
+    const g = pixels[offset + 1] / 255;
+    const b = pixels[offset + 2] / 255;
+    const a = pixels[offset + 3] / 255;
+    output[offset] = Math.round(clamp(matrix[0] * r + matrix[1] * g + matrix[2] * b + matrix[3] * a + matrix[4], 0, 1) * 255);
+    output[offset + 1] = Math.round(clamp(matrix[5] * r + matrix[6] * g + matrix[7] * b + matrix[8] * a + matrix[9], 0, 1) * 255);
+    output[offset + 2] = Math.round(clamp(matrix[10] * r + matrix[11] * g + matrix[12] * b + matrix[13] * a + matrix[14], 0, 1) * 255);
+    output[offset + 3] = Math.round(clamp(matrix[15] * r + matrix[16] * g + matrix[17] * b + matrix[18] * a + matrix[19], 0, 1) * 255);
+  }
+
+  return output;
+}
+
+function applyComponentTransferFilter(pixels: Uint8ClampedArray, funcs: readonly ComponentTransferFunc[]): Uint8ClampedArray {
+  const output = new Uint8ClampedArray(pixels.length);
+
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    output[offset] = Math.round(applyComponentTransferFunc(pixels[offset] / 255, funcs[0]) * 255);
+    output[offset + 1] = Math.round(applyComponentTransferFunc(pixels[offset + 1] / 255, funcs[1]) * 255);
+    output[offset + 2] = Math.round(applyComponentTransferFunc(pixels[offset + 2] / 255, funcs[2]) * 255);
+    output[offset + 3] = Math.round(applyComponentTransferFunc(pixels[offset + 3] / 255, funcs[3]) * 255);
+  }
+
+  return output;
+}
+
+function applyComponentTransferFunc(value: number, func: ComponentTransferFunc): number {
+  if (func.type === "identity") {
+    return value;
+  }
+
+  if (func.type === "linear") {
+    return clamp((func.slope ?? 1) * value + (func.intercept ?? 0), 0, 1);
+  }
+
+  if (func.type === "gamma") {
+    return clamp((func.amplitude ?? 1) * value ** (func.exponent ?? 1) + (func.offset ?? 0), 0, 1);
+  }
+
+  const table = func.tableValues ?? [0, 1];
+  if (func.type === "discrete") {
+    return clamp(table[clamp(Math.floor(value * table.length), 0, table.length - 1)], 0, 1);
+  }
+
+  if (table.length === 1) {
+    return clamp(table[0], 0, 1);
+  }
+
+  const position = value * (table.length - 1);
+  const left = clamp(Math.floor(position), 0, table.length - 1);
+  const right = clamp(left + 1, 0, table.length - 1);
+  return clamp(lerp(table[left], table[right], position - left), 0, 1);
 }
 
 function applyDropShadowFilter(

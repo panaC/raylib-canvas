@@ -185,6 +185,28 @@ Object.defineProperty(globalThis, "CanvasPattern", {
   value: CanvasPattern
 });
 
+class WptCanvasFilter {
+  readonly __raylibCanvasFilterOperations: readonly unknown[];
+
+  constructor(filter: unknown) {
+    this.__raylibCanvasFilterOperations = Array.isArray(filter) ? [...filter] : [filter];
+  }
+
+  toString(): string {
+    return "[object CanvasFilter]";
+  }
+
+  get [Symbol.toStringTag](): string {
+    return "CanvasFilter";
+  }
+}
+
+Object.defineProperty(globalThis, "CanvasFilter", {
+  configurable: true,
+  writable: true,
+  value: WptCanvasFilter
+});
+
 function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const existing = wrappers.get(domCanvas);
 
