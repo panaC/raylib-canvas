@@ -129,7 +129,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/fill-and-stroke-styles/",
-      "reason": "Hex parsing, invalid color retention, gradient object behavior, and canvas-backed pattern/repetition validation have smoke/unit coverage; broad CSS color parsing, exact gradient fidelity, image-backed patterns, and pattern transforms remain incomplete."
+      "reason": "Named/HTML4, hex, legacy rgb()/rgba(), hsl()/hsla(), transparent, CSSRGB/CSSHSL, invalid color retention, gradient object behavior, and canvas-backed pattern/repetition validation have smoke/unit coverage; modern relative/color-mix CSS parsing, exact gradient fidelity, image-backed patterns, and pattern transforms remain incomplete."
     },
     {
       "status": "blocked",

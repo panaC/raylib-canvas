@@ -65,7 +65,9 @@ covers official upstream files for:
 - `globalCompositeOperation` defaults, accepted core operation strings,
   invalid assignment behavior, and solid filled rectangle rendering for core
   Porter-Duff modes plus `lighter` and `clear`
-- `fillStyle` hex parsing and invalid-name/invalid-hex retention
+- `fillStyle` named/HTML4, hex, legacy `rgb()`/`rgba()`, `hsl()`/`hsla()`,
+  `transparent`, CSS Typed OM `CSSRGB`/`CSSHSL`, getter serialization, and
+  invalid-name/invalid-hex retention
 - `strokeStyle` default state, plus unit coverage for supported color parsing
   and invalid assignment retention
 - `CanvasGradient` constructor exposure, object return shape, object identity

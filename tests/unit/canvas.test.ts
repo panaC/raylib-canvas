@@ -92,11 +92,20 @@ describe("createCanvas", () => {
     ctx.fillStyle = "#0F0";
     expect(ctx.fillStyle).toBe("#00ff00");
 
-    ctx.fillStyle = "not-a-css-color";
+    ctx.fillStyle = "rgb(0%, 50%, 100%)";
+    expect(ctx.fillStyle).toBe("#0080ff");
+
+    ctx.fillStyle = "hsl(120, 100%, 50%)";
     expect(ctx.fillStyle).toBe("#00ff00");
 
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    expect(ctx.fillStyle).toBe("rgba(255, 255, 255, 0.5)");
+
+    ctx.fillStyle = "not-a-css-color";
+    expect(ctx.fillStyle).toBe("rgba(255, 255, 255, 0.5)");
+
     ctx.fillRect(0, 0, 1, 1);
-    expect(pixelAt(ctx, 0, 0)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 255, 255, 128]);
   });
 
   it("serializes supported strokeStyle colors and ignores invalid assignments", async () => {

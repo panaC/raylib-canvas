@@ -678,6 +678,7 @@ const NAMED_COLORS: Record<string, Rgba> = {
   gray: [128, 128, 128, 255],
   green: [0, 128, 0, 255],
   grey: [128, 128, 128, 255],
+  lime: [0, 255, 0, 255],
   maroon: [128, 0, 0, 255],
   navy: [0, 0, 128, 255],
   orange: [255, 165, 0, 255],
@@ -4099,7 +4100,7 @@ function parseCanvasPaintStyle(
     return { style: value, paint: { type: "pattern", pattern: value } };
   }
 
-  const color = parseColor(String(value));
+  const color = parseCssColorObject(value) ?? parseColor(String(value));
   if (!color) {
     return undefined;
   }
@@ -5066,6 +5067,40 @@ function serializeCssNumber(value: number): string {
   return String(value);
 }
 
+function parseCssColorObject(value: unknown): { rgba: Rgba; serialized: string } | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const record = value as {
+    readonly constructor?: { readonly name?: string };
+    readonly r?: unknown;
+    readonly g?: unknown;
+    readonly b?: unknown;
+    readonly h?: unknown;
+    readonly s?: unknown;
+    readonly l?: unknown;
+    readonly alpha?: unknown;
+  };
+
+  if (record.constructor?.name === "CSSRGB") {
+    const rgba: Rgba = [
+      cssRgbComponentToByte(record.r),
+      cssRgbComponentToByte(record.g),
+      cssRgbComponentToByte(record.b),
+      cssAlphaToByte(record.alpha)
+    ];
+    return { rgba, serialized: serializeColor(rgba) };
+  }
+
+  if (record.constructor?.name === "CSSHSL") {
+    const rgba = hslToRgba(cssHueToDegrees(record.h), cssUnitInterval(record.s), cssUnitInterval(record.l), cssAlphaToByte(record.alpha));
+    return { rgba, serialized: serializeColor(rgba) };
+  }
+
+  return undefined;
+}
+
 function parseColor(value: string): { rgba: Rgba; serialized: string } | undefined {
   const normalized = value.trim().toLowerCase();
   const named = NAMED_COLORS[normalized];
@@ -5121,39 +5156,53 @@ function parseColor(value: string): { rgba: Rgba; serialized: string } | undefin
     return { rgba, serialized: serializeColor(rgba) };
   }
 
-  const rgb = /^rgb\(\s*(-?\d{1,3})\s*,\s*(-?\d{1,3})\s*,\s*(-?\d{1,3})\s*\)$/.exec(normalized);
+  const rgb = /^rgb\(\s*([+-]?\d*\.?\d+%?)\s*,\s*([+-]?\d*\.?\d+%?)\s*,\s*([+-]?\d*\.?\d+%?)\s*\)?$/.exec(normalized);
   if (rgb) {
     const rgba: Rgba = [
-      clamp(Number(rgb[1]), 0, 255),
-      clamp(Number(rgb[2]), 0, 255),
-      clamp(Number(rgb[3]), 0, 255),
+      parseRgbComponent(rgb[1]),
+      parseRgbComponent(rgb[2]),
+      parseRgbComponent(rgb[3]),
       255
     ];
     return { rgba, serialized: serializeColor(rgba) };
   }
 
-  const rgba = /^rgba\(\s*(-?\d{1,3})\s*,\s*(-?\d{1,3})\s*,\s*(-?\d{1,3})\s*,\s*(\d*\.?\d+%?)\s*\)$/.exec(
+  const rgba = /^rgba\(\s*([+-]?\d*\.?\d+%?)\s*,\s*([+-]?\d*\.?\d+%?)\s*,\s*([+-]?\d*\.?\d+%?)\s*,\s*([+-]?\d*\.?\d+%?)\s*\)?$/.exec(
     normalized
   );
   if (rgba) {
+    const alpha = parseAlpha(rgba[4]);
     const color: Rgba = [
-      clamp(Number(rgba[1]), 0, 255),
-      clamp(Number(rgba[2]), 0, 255),
-      clamp(Number(rgba[3]), 0, 255),
-      parseAlpha(rgba[4])
+      parseRgbComponent(rgba[1]),
+      parseRgbComponent(rgba[2]),
+      parseRgbComponent(rgba[3]),
+      alpha.byte
     ];
+    return { rgba: color, serialized: serializeColor(color, alpha.serialized) };
+  }
+
+  const hsl = /^hsl\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)%\s*,\s*([+-]?\d*\.?\d+)%\s*\)$/.exec(normalized);
+  if (hsl) {
+    const color = hslToRgba(Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100, 255);
     return { rgba: color, serialized: serializeColor(color) };
+  }
+
+  const hsla = /^hsla\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)%\s*,\s*([+-]?\d*\.?\d+)%\s*,\s*([+-]?\d*\.?\d+%?)\s*\)$/.exec(normalized);
+  if (hsla) {
+    const alpha = parseAlpha(hsla[4]);
+    const color = hslToRgba(Number(hsla[1]), Number(hsla[2]) / 100, Number(hsla[3]) / 100, alpha.byte);
+    return { rgba: color, serialized: serializeColor(color, alpha.serialized) };
   }
 
   return undefined;
 }
 
-function serializeColor(color: Rgba): string {
+function serializeColor(color: Rgba, alphaOverride?: string): string {
   if (color[3] === 255) {
     return `#${toHexByte(color[0])}${toHexByte(color[1])}${toHexByte(color[2])}`;
   }
 
-  const alpha = Math.round((color[3] / 255) * 1000) / 1000;
+  const alpha = alphaOverride ?? Math.round((color[3] / 255) * 1000) / 1000;
   return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
 }
 
@@ -5161,12 +5210,108 @@ function toHexByte(value: number): string {
   return value.toString(16).padStart(2, "0");
 }
 
-function parseAlpha(value: string): number {
+function parseRgbComponent(value: string): number {
   if (value.endsWith("%")) {
     return clamp(Math.round((Number(value.slice(0, -1)) / 100) * 255), 0, 255);
   }
 
-  return clamp(Math.round(Number(value) * 255), 0, 255);
+  return clamp(Math.round(Number(value)), 0, 255);
+}
+
+function parseAlpha(value: string): { byte: number; serialized: string } {
+  if (value.endsWith("%")) {
+    const alpha = clamp(Number(value.slice(0, -1)) / 100, 0, 1);
+    return { byte: Math.round(alpha * 255), serialized: serializeAlpha(alpha) };
+  }
+
+  const alpha = clamp(Number(value), 0, 1);
+  return { byte: Math.round(alpha * 255), serialized: serializeAlpha(alpha) };
+}
+
+function serializeAlpha(value: number): string {
+  return String(Math.round(value * 1000) / 1000);
+}
+
+function hslToRgba(hue: number, saturation: number, lightness: number, alpha: number): Rgba {
+  const h = positiveModulo(hue, 360) / 360;
+  const s = clamp(saturation, 0, 1);
+  const l = clamp(lightness, 0, 1);
+
+  if (s === 0) {
+    const gray = Math.round(l * 255);
+    return [gray, gray, gray, alpha];
+  }
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [
+    Math.round(hueToRgb(p, q, h + 1 / 3) * 255),
+    Math.round(hueToRgb(p, q, h) * 255),
+    Math.round(hueToRgb(p, q, h - 1 / 3) * 255),
+    alpha
+  ];
+}
+
+function hueToRgb(p: number, q: number, t: number): number {
+  if (t < 0) {
+    t += 1;
+  }
+  if (t > 1) {
+    t -= 1;
+  }
+  if (t < 1 / 6) {
+    return p + (q - p) * 6 * t;
+  }
+  if (t < 1 / 2) {
+    return q;
+  }
+  if (t < 2 / 3) {
+    return p + (q - p) * (2 / 3 - t) * 6;
+  }
+  return p;
+}
+
+function cssRgbComponentToByte(value: unknown): number {
+  const unit = cssUnit(value);
+  if (unit?.unit === "percent") {
+    return clamp(Math.round((unit.value / 100) * 255), 0, 255);
+  }
+  return clamp(Math.round(Number(unit?.value ?? value) * 255), 0, 255);
+}
+
+function cssAlphaToByte(value: unknown): number {
+  if (value === undefined) {
+    return 255;
+  }
+  const unit = cssUnit(value);
+  if (unit?.unit === "percent") {
+    return clamp(Math.round((unit.value / 100) * 255), 0, 255);
+  }
+  return clamp(Math.round(Number(unit?.value ?? value) * 255), 0, 255);
+}
+
+function cssHueToDegrees(value: unknown): number {
+  const unit = cssUnit(value);
+  return Number(unit?.value ?? value);
+}
+
+function cssUnitInterval(value: unknown): number {
+  const unit = cssUnit(value);
+  if (unit?.unit === "percent") {
+    return unit.value / 100;
+  }
+  return Number(unit?.value ?? value);
+}
+
+function cssUnit(value: unknown): { value: number; unit: string } | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const record = value as { readonly value?: unknown; readonly unit?: unknown };
+  if (typeof record.value === "number" && typeof record.unit === "string") {
+    return { value: record.value, unit: record.unit };
+  }
+  return undefined;
 }
 
 function createIndexSizeError(message: string): Error {
