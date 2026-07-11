@@ -27,7 +27,7 @@
 | `canvas` | [WHATWG CanvasRenderingContext2D.canvas](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-canvas-dev) | waiting |
 | `getContextAttributes()` | [WHATWG getContextAttributes](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-getcontextattributes-dev) | waiting |
 | `isContextLost()` | [WHATWG isContextLost](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-iscontextlost-dev) | waiting |
-| `reset()` | [WHATWG reset](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-reset-dev) | waiting |
+| `reset()` | [WHATWG reset](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-reset-dev) | done |
 | `save()` | [WHATWG save](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-save-dev) | waiting |
 | `restore()` | [WHATWG restore](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-restore-dev) | waiting |
 | `scale(x, y)` | [WHATWG scale](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-scale-dev) | done |

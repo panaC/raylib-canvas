@@ -83,8 +83,13 @@
     },
     {
       "status": "blocked",
+      "prefix": "html/canvas/element/reset/",
+      "reason": "reset() bitmap clearing and drawing-state reset behavior have smoke coverage; remaining reset rendering reference tests depend on broader text, shadow, compositing, and pixel-fidelity coverage."
+    },
+    {
+      "status": "blocked",
       "prefix": "html/canvas/element/canvas-state/",
-      "reason": "save()/restore() cover implemented drawing state including styles, shadows, filters, line, text, and transforms; reset() and remaining state areas are incomplete."
+      "reason": "save()/restore() cover implemented drawing state including styles, shadows, filters, line, text, and transforms; remaining state areas are incomplete."
     },
     {
       "status": "blocked",

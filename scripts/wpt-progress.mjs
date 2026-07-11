@@ -154,7 +154,7 @@ function summarizeWptReport(path) {
 }
 
 function countUnexpected(result) {
-  let count = isExpectedStatus(result.status, result.expected, "OK") ? 0 : 1;
+  let count = isExpectedStatus(result.status, result.expected, ["OK", "PASS"]) ? 0 : 1;
 
   for (const subtest of result.subtests ?? []) {
     if (!isExpectedStatus(subtest.status, subtest.expected, "PASS")) {
@@ -174,7 +174,7 @@ function isExpectedStatus(status, expected, defaultExpected) {
     return status === expected;
   }
 
-  return status === defaultExpected;
+  return Array.isArray(defaultExpected) ? defaultExpected.includes(status) : status === defaultExpected;
 }
 
 function printTextReport(result) {

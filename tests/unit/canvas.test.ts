@@ -329,6 +329,85 @@ describe("createCanvas", () => {
     expect(ctx.lineDashOffset).toBe(5);
   });
 
+  it("resets bitmap, path, clip, stack, and drawing state", async () => {
+    const canvas = await createTestCanvas(4, 4);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 4, 4);
+    ctx.rect(0, 0, 1, 1);
+    ctx.clip();
+    ctx.save();
+    ctx.fillStyle = "blue";
+    ctx.strokeStyle = "green";
+    ctx.globalAlpha = 0.5;
+    ctx.globalCompositeOperation = "copy";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "bevel";
+    ctx.miterLimit = 4;
+    ctx.setLineDash([2, 1]);
+    ctx.lineDashOffset = 7;
+    ctx.font = "20px serif";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.direction = "rtl";
+    ctx.letterSpacing = "2px";
+    ctx.wordSpacing = "3px";
+    ctx.fontKerning = "none";
+    ctx.fontStretch = "expanded";
+    ctx.fontVariantCaps = "small-caps";
+    ctx.textRendering = "geometricPrecision";
+    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingQuality = "high";
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 2;
+    ctx.shadowBlur = 3;
+    ctx.shadowColor = "red";
+    ctx.filter = "opacity(0.25)";
+    ctx.translate(2, 0);
+
+    ctx.reset();
+    ctx.restore();
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 0]);
+    expect(ctx.fillStyle).toBe("#000000");
+    expect(ctx.strokeStyle).toBe("#000000");
+    expect(ctx.globalAlpha).toBe(1);
+    expect(ctx.globalCompositeOperation).toBe("source-over");
+    expect(ctx.lineWidth).toBe(1);
+    expect(ctx.lineCap).toBe("butt");
+    expect(ctx.lineJoin).toBe("miter");
+    expect(ctx.miterLimit).toBe(10);
+    expect(ctx.getLineDash()).toEqual([]);
+    expect(ctx.lineDashOffset).toBe(0);
+    expect(ctx.font).toBe("10px sans-serif");
+    expect(ctx.textAlign).toBe("start");
+    expect(ctx.textBaseline).toBe("alphabetic");
+    expect(ctx.direction).toBe("inherit");
+    expect(ctx.letterSpacing).toBe("0px");
+    expect(ctx.wordSpacing).toBe("0px");
+    expect(ctx.fontKerning).toBe("auto");
+    expect(ctx.fontStretch).toBe("normal");
+    expect(ctx.fontVariantCaps).toBe("normal");
+    expect(ctx.textRendering).toBe("auto");
+    expect(ctx.imageSmoothingEnabled).toBe(true);
+    expect(ctx.imageSmoothingQuality).toBe("low");
+    expect(ctx.shadowOffsetX).toBe(0);
+    expect(ctx.shadowOffsetY).toBe(0);
+    expect(ctx.shadowBlur).toBe(0);
+    expect(ctx.shadowColor).toBe("rgba(0, 0, 0, 0)");
+    expect(ctx.filter).toBe("none");
+    expect(ctx.getTransform()).toMatchObject({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, is2D: true });
+
+    ctx.fillRect(3, 3, 1, 1);
+    expect(pixelAt(ctx, 3, 3)).toEqual([0, 0, 0, 255]);
+
+    ctx.lineTo(3, 3);
+    expect(ctx.isPointInStroke(3, 3)).toBe(false);
+  });
+
   it("exposes default text drawing styles", async () => {
     const canvas = await createTestCanvas(2, 2);
     const ctx = canvas.getContext("2d");

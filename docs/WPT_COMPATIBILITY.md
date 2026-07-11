@@ -115,6 +115,9 @@ covers official upstream files for:
 - `imageSmoothingEnabled` and `imageSmoothingQuality` default, assignment, and
   save/restore behavior; quality is stored as a hint, while rendering currently
   switches between nearest-neighbor and bilinear smoothing
+- `reset()` bitmap clearing and drawing-state reset behavior, including styles,
+  shadows, filters, line state, text state, image smoothing, clipping, and
+  transforms; heavier reset rendering reference tests remain partial
 - the full upstream `html/canvas/element/transformations/` directory,
   including transform ordering, skewed transforms, non-finite argument
   handling, and matrix multiplication behavior

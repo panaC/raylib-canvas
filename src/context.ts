@@ -206,6 +206,12 @@ export interface Canvas2DContext {
   createPattern(image: Canvas, repetition?: string | null): CanvasPattern | null;
 
   /**
+   * Resets the rendering context state and clears the canvas bitmap.
+   * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-reset-dev
+   */
+  reset(): void;
+
+  /**
    * Saves the current drawing state.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-save-dev
    */
@@ -1731,6 +1737,14 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     return new CanvasPattern(image, normalized);
   }
 
+  reset(): void {
+    this.fillRectPixels(0, 0, this.canvas.width, this.canvas.height, TRANSPARENT_BLACK);
+    this.#resetDrawingState();
+    this.#currentPath = new CanvasPath2D();
+    this.#stateStack = [];
+    this.#clipMask = undefined;
+  }
+
   save(): void {
     this.#stateStack.push({
       fillStyle: this.#fillStyle,
@@ -1811,6 +1825,42 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     this.#lineDash = [...state.lineDash];
     this.lineDashOffset = state.lineDashOffset;
     this.#clipMask = state.clipMask ? new Uint8Array(state.clipMask) : undefined;
+  }
+
+  #resetDrawingState(): void {
+    this.#fillStyle = "#000000";
+    this.#fillPaint = { type: "color", rgba: [0, 0, 0, 255] };
+    this.#strokeStyle = "#000000";
+    this.#strokePaint = { type: "color", rgba: [0, 0, 0, 255] };
+    this.#transform = IDENTITY_MATRIX;
+    this.fillRule = "nonzero";
+    this.#globalAlpha = 1;
+    this.#globalCompositeOperation = "source-over";
+    this.#lineWidth = 1;
+    this.#lineCap = "butt";
+    this.#lineJoin = "miter";
+    this.#miterLimit = 10;
+    this.#lineDash = [];
+    this.#lineDashOffset = 0;
+    this.#font = "10px sans-serif";
+    this.#textAlign = "start";
+    this.#textBaseline = "alphabetic";
+    this.#direction = "inherit";
+    this.#letterSpacing = "0px";
+    this.#wordSpacing = "0px";
+    this.#fontKerning = "auto";
+    this.#fontStretch = "normal";
+    this.#fontVariantCaps = "normal";
+    this.#textRendering = "auto";
+    this.#filter = "none";
+    this.#filterOpacity = 1;
+    this.#shadowOffsetX = 0;
+    this.#shadowOffsetY = 0;
+    this.#shadowBlur = 0;
+    this.#shadowColor = "rgba(0, 0, 0, 0)";
+    this.#shadowRgba = [0, 0, 0, 0];
+    this.#imageSmoothingEnabled = true;
+    this.#imageSmoothingQuality = "low";
   }
 
   clearRect(x: number, y: number, width: number, height: number): void {
