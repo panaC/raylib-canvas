@@ -46,7 +46,9 @@ Docker. `build-wpt-shim` prepends the preload to the injected shim when
 The smoke suite is listed in `tests/wpt/canvas-smoke-tests.txt`. It currently
 covers official upstream files for:
 
-- canvas context existence and context sharing
+- canvas context existence, context sharing/cache behavior, invalid argument
+  handling, unique context instances, type exposure, and prototype
+  extension/replacement behavior
 - `fillRect()` basic, negative-size, zero-size, and non-finite drawing
 - `clearRect()` basic, negative-size, zero-size, non-finite clearing, and
   immunity from `globalAlpha`/`globalCompositeOperation`
@@ -122,9 +124,9 @@ covers official upstream files for:
   saved-state boundary errors, layer rendering-state reset/restore, basic
   offscreen pixel compositing, transform state inside layers, reset discarding
   active layers, and unit coverage for rejecting readback/source use while
-  layers are open; most upstream `html/canvas/element/layers/` tests are now
-  smoke-gated, while browser-exact anisotropic blur and CSS/drop-shadow filter
-  reference tests remain partial
+  layers are open; visual layer/filter/clipping/shadow reference tests remain
+  partial until the software filter and compositing pipeline matches browser
+  rasterization closely enough for exact reftest comparison
 - the full upstream `html/canvas/element/transformations/` directory,
   including transform ordering, skewed transforms, non-finite argument
   handling, and matrix multiplication behavior

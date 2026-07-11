@@ -39,7 +39,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/layers/",
-      "reason": "Most layer tests are smoke-gated, including call validation, saved-state boundaries, rendering-state reset/restore, reset discarding active layers, offscreen compositing, readback/source rejection, clipping, transforms, shadows, and many filter interactions; remaining layer tests require browser-exact anisotropic blur and CSS/drop-shadow filter reference fidelity."
+      "reason": "Layer smoke coverage includes call validation, saved-state boundaries, rendering-state reset/restore, reset discarding active layers, offscreen compositing, readback/source rejection, basic transforms, and parent-transform application for layer drop-shadow filters; remaining layer tests require browser-exact filter, clipping, shadow, nesting, and compositing reference fidelity."
     },
     {
       "status": "blocked",

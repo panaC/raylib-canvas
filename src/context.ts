@@ -618,6 +618,7 @@ type CanvasLayer = {
   readonly operation: GlobalCompositeOperation;
   readonly filterOpacity: number;
   readonly filterOperations: readonly CanvasFilterOperation[];
+  readonly filterTransform: Matrix2D;
   readonly savedStateDepth: number;
   readonly outerState: CanvasState;
 };
@@ -690,6 +691,7 @@ const NAMED_COLORS: Record<string, Rgba> = {
 };
 const TRANSPARENT_BLACK: Rgba = [0, 0, 0, 0];
 const IDENTITY_MATRIX: Matrix2D = [1, 0, 0, 1, 0, 0];
+const SVG_GAUSSIAN_BLUR_SIGMA_SCALE = 0.988;
 const GLOBAL_COMPOSITE_OPERATIONS = new Set<string>([
   "clear",
   "copy",
@@ -1822,6 +1824,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
       operation: this.#globalCompositeOperation,
       filterOpacity,
       filterOperations,
+      filterTransform: this.#transform,
       savedStateDepth: this.#stateStack.length,
       outerState: this.#captureState()
     });
@@ -1841,7 +1844,13 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
 
     const target = this.getPixels();
-    const filteredPixels = applyCanvasFilterOperations(layer.pixels, this.canvas.width, this.canvas.height, layer.filterOperations);
+    const filteredPixels = applyCanvasFilterOperations(
+      layer.pixels,
+      this.canvas.width,
+      this.canvas.height,
+      layer.filterOperations,
+      layer.filterTransform
+    );
     const alpha = layer.alpha * layer.filterOpacity;
 
     for (let offset = 0; offset < filteredPixels.length; offset += 4) {
@@ -3991,6 +4000,13 @@ function transformPoint(matrix: Matrix2D, x: number, y: number): Point {
   };
 }
 
+function transformVector(matrix: Matrix2D, x: number, y: number): Point {
+  return {
+    x: matrix[0] * x + matrix[2] * y,
+    y: matrix[1] * x + matrix[3] * y
+  };
+}
+
 function inverseTransformPoint(matrix: Matrix2D, x: number, y: number): Point | undefined {
   const inverse = new CanvasTransformMatrix(matrix).invertSelf();
 
@@ -4446,8 +4462,8 @@ function parseDropShadowFilter(value: string): CanvasFilterOperation | undefined
     return undefined;
   }
 
-  const dx = parseFilterLength(parts[0]);
-  const dy = parseFilterLength(parts[1]);
+  const dx = parseFilterOffset(parts[0]);
+  const dy = parseFilterOffset(parts[1]);
   let stdDeviation = 0;
   let colorStart = 2;
 
@@ -4473,6 +4489,16 @@ function parseFilterLength(value: string): number | undefined {
 
   const number = Number(length.slice(0, -2));
   return Number.isFinite(number) ? Math.max(0, number) : undefined;
+}
+
+function parseFilterOffset(value: string): number | undefined {
+  const length = parseCssLength(value);
+  if (!length?.endsWith("px")) {
+    return undefined;
+  }
+
+  const number = Number(length.slice(0, -2));
+  return Number.isFinite(number) ? number : undefined;
 }
 
 function parseFilterStdDeviation(value: unknown): [number, number] {
@@ -4503,7 +4529,8 @@ function applyCanvasFilterOperations(
   pixels: Uint8ClampedArray,
   width: number,
   height: number,
-  operations: readonly CanvasFilterOperation[]
+  operations: readonly CanvasFilterOperation[],
+  filterTransform: Matrix2D = IDENTITY_MATRIX
 ): Uint8ClampedArray {
   let output = copyPixels(pixels);
 
@@ -4518,7 +4545,7 @@ function applyCanvasFilterOperations(
       continue;
     }
 
-    output = applyDropShadowFilter(output, width, height, operation);
+    output = applyDropShadowFilter(output, width, height, operation, filterTransform);
   }
 
   return output;
@@ -4538,11 +4565,13 @@ function applyDropShadowFilter(
   pixels: Uint8ClampedArray,
   width: number,
   height: number,
-  operation: Extract<CanvasFilterOperation, { readonly type: "dropShadow" }>
+  operation: Extract<CanvasFilterOperation, { readonly type: "dropShadow" }>,
+  filterTransform: Matrix2D
 ): Uint8ClampedArray {
   const shadow = new Uint8ClampedArray(pixels.length);
-  const dx = Math.round(operation.dx);
-  const dy = Math.round(operation.dy);
+  const transformedOffset = transformVector(filterTransform, operation.dx, operation.dy);
+  const dx = Math.round(transformedOffset.x);
+  const dy = Math.round(transformedOffset.y);
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -4583,16 +4612,14 @@ function applyBlurFilter(
   stdDeviationX: number,
   stdDeviationY: number
 ): Uint8ClampedArray {
-  const radiusX = Math.ceil(stdDeviationX * 3);
-  const radiusY = Math.ceil(stdDeviationY * 3);
   let output = pixels;
 
-  if (radiusX > 0) {
-    output = boxBlurHorizontal(output, width, height, radiusX);
+  if (stdDeviationX > 0) {
+    output = gaussianBlurHorizontal(output, width, height, createGaussianKernel(stdDeviationX));
   }
 
-  if (radiusY > 0) {
-    output = boxBlurVertical(output, width, height, radiusY);
+  if (stdDeviationY > 0) {
+    output = gaussianBlurVertical(output, width, height, createGaussianKernel(stdDeviationY));
   }
 
   return output === pixels ? copyPixels(pixels) : output;
@@ -4604,8 +4631,29 @@ function copyPixels(pixels: Uint8ClampedArray): Uint8ClampedArray {
   return copy;
 }
 
-function boxBlurHorizontal(pixels: Uint8ClampedArray, width: number, height: number, radius: number): Uint8ClampedArray {
+function createGaussianKernel(stdDeviation: number): Float64Array {
+  const scaledStdDeviation = stdDeviation * SVG_GAUSSIAN_BLUR_SIGMA_SCALE;
+  const radius = Math.ceil(scaledStdDeviation * 3);
+  const kernel = new Float64Array(radius * 2 + 1);
+  const denominator = 2 * scaledStdDeviation * scaledStdDeviation;
+  let sum = 0;
+
+  for (let offset = -radius; offset <= radius; offset += 1) {
+    const weight = Math.exp(-(offset * offset) / denominator);
+    kernel[offset + radius] = weight;
+    sum += weight;
+  }
+
+  for (let index = 0; index < kernel.length; index += 1) {
+    kernel[index] /= sum;
+  }
+
+  return kernel;
+}
+
+function gaussianBlurHorizontal(pixels: Uint8ClampedArray, width: number, height: number, kernel: Float64Array): Uint8ClampedArray {
   const output = new Uint8ClampedArray(pixels.length);
+  const radius = Math.floor(kernel.length / 2);
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -4613,30 +4661,36 @@ function boxBlurHorizontal(pixels: Uint8ClampedArray, width: number, height: num
       let green = 0;
       let blue = 0;
       let alpha = 0;
-      let count = 0;
 
-      for (let sx = Math.max(0, x - radius); sx <= Math.min(width - 1, x + radius); sx += 1) {
+      for (let kernelIndex = 0; kernelIndex < kernel.length; kernelIndex += 1) {
+        const sx = x + kernelIndex - radius;
+
+        if (sx < 0 || sx >= width) {
+          continue;
+        }
+
         const offset = (y * width + sx) * 4;
-        red += pixels[offset];
-        green += pixels[offset + 1];
-        blue += pixels[offset + 2];
-        alpha += pixels[offset + 3];
-        count += 1;
+        const weight = kernel[kernelIndex];
+        red += pixels[offset] * pixels[offset + 3] * weight;
+        green += pixels[offset + 1] * pixels[offset + 3] * weight;
+        blue += pixels[offset + 2] * pixels[offset + 3] * weight;
+        alpha += pixels[offset + 3] * weight;
       }
 
       const targetOffset = (y * width + x) * 4;
-      output[targetOffset] = Math.round(red / count);
-      output[targetOffset + 1] = Math.round(green / count);
-      output[targetOffset + 2] = Math.round(blue / count);
-      output[targetOffset + 3] = Math.round(alpha / count);
+      output[targetOffset] = alpha === 0 ? 0 : Math.round(red / alpha);
+      output[targetOffset + 1] = alpha === 0 ? 0 : Math.round(green / alpha);
+      output[targetOffset + 2] = alpha === 0 ? 0 : Math.round(blue / alpha);
+      output[targetOffset + 3] = Math.round(alpha);
     }
   }
 
   return output;
 }
 
-function boxBlurVertical(pixels: Uint8ClampedArray, width: number, height: number, radius: number): Uint8ClampedArray {
+function gaussianBlurVertical(pixels: Uint8ClampedArray, width: number, height: number, kernel: Float64Array): Uint8ClampedArray {
   const output = new Uint8ClampedArray(pixels.length);
+  const radius = Math.floor(kernel.length / 2);
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -4644,22 +4698,27 @@ function boxBlurVertical(pixels: Uint8ClampedArray, width: number, height: numbe
       let green = 0;
       let blue = 0;
       let alpha = 0;
-      let count = 0;
 
-      for (let sy = Math.max(0, y - radius); sy <= Math.min(height - 1, y + radius); sy += 1) {
+      for (let kernelIndex = 0; kernelIndex < kernel.length; kernelIndex += 1) {
+        const sy = y + kernelIndex - radius;
+
+        if (sy < 0 || sy >= height) {
+          continue;
+        }
+
         const offset = (sy * width + x) * 4;
-        red += pixels[offset];
-        green += pixels[offset + 1];
-        blue += pixels[offset + 2];
-        alpha += pixels[offset + 3];
-        count += 1;
+        const weight = kernel[kernelIndex];
+        red += pixels[offset] * pixels[offset + 3] * weight;
+        green += pixels[offset + 1] * pixels[offset + 3] * weight;
+        blue += pixels[offset + 2] * pixels[offset + 3] * weight;
+        alpha += pixels[offset + 3] * weight;
       }
 
       const targetOffset = (y * width + x) * 4;
-      output[targetOffset] = Math.round(red / count);
-      output[targetOffset + 1] = Math.round(green / count);
-      output[targetOffset + 2] = Math.round(blue / count);
-      output[targetOffset + 3] = Math.round(alpha / count);
+      output[targetOffset] = alpha === 0 ? 0 : Math.round(red / alpha);
+      output[targetOffset + 1] = alpha === 0 ? 0 : Math.round(green / alpha);
+      output[targetOffset + 2] = alpha === 0 ? 0 : Math.round(blue / alpha);
+      output[targetOffset + 3] = Math.round(alpha);
     }
   }
 

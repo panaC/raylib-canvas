@@ -20,8 +20,12 @@ interface BackingCanvas {
 
 const backings = new WeakMap<HTMLCanvasElement, BackingCanvas>();
 const wrappers = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
+const wrapperCanvases = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>();
 const contextBackend = process.env.RAYLIB_CANVAS_CONTEXT;
 
+const originalHTMLCanvasGetContext = HTMLCanvasElement.prototype.getContext;
+const originalContextPrototypeDescriptors = Object.getOwnPropertyDescriptors(CanvasRenderingContext2D.prototype);
+const originalFillRect = CanvasRenderingContext2D.prototype.fillRect;
 const originalCreateImageBitmap = globalThis.createImageBitmap?.bind(globalThis);
 const originalCanvasDrawImage = CanvasRenderingContext2D.prototype.drawImage;
 const originalOffscreenCanvasDrawImage = globalThis.OffscreenCanvasRenderingContext2D?.prototype.drawImage;
@@ -33,12 +37,36 @@ HTMLCanvasElement.prototype.getContext = function patchedGetContext(
   contextId: string,
   _options?: unknown
 ): RenderingContext | null {
+  if (arguments.length === 0) {
+    throw new TypeError("Failed to execute 'getContext' on 'HTMLCanvasElement': 1 argument required, but only 0 present.");
+  }
+
   if (contextId !== "2d") {
     return null;
   }
 
   return getOrCreateWrapper(this);
 } as typeof HTMLCanvasElement.prototype.getContext;
+
+function patchedNativeFillRect(
+  this: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): void {
+  const domCanvas = wrapperCanvases.get(this);
+
+  if (!domCanvas) {
+    return originalFillRect.call(this, x, y, width, height);
+  }
+
+  const result = getCurrentContext(domCanvas).fillRect(x, y, width, height);
+  syncVisibleCanvas(domCanvas);
+  return result;
+}
+
+CanvasRenderingContext2D.prototype.fillRect = patchedNativeFillRect as typeof CanvasRenderingContext2D.prototype.fillRect;
 
 HTMLCanvasElement.prototype.toBlob = function patchedToBlob(
   this: HTMLCanvasElement,
@@ -142,8 +170,9 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
     return existing;
   }
 
+  const target = Object.create(CanvasRenderingContext2D.prototype);
   const wrapper = new Proxy(
-    {},
+    target,
     {
       get(_target, property) {
         if (property === "canvas") {
@@ -179,7 +208,7 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
               number | undefined,
               number | undefined
             ];
-            return getCurrentContext(domCanvas).putImageData(
+            const result = getCurrentContext(domCanvas).putImageData(
               toCanvasImageData(imageData),
               dx,
               dy,
@@ -188,6 +217,8 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
               dirtyWidth,
               dirtyHeight
             );
+            syncVisibleCanvas(domCanvas);
+            return result;
           };
         }
 
@@ -195,7 +226,9 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
           return (...args: unknown[]) => {
             const [image, ...drawArgs] = args;
             const context = getCurrentContext(domCanvas);
-            return context.drawImage(toCanvasImageSource(image), ...(drawArgs as number[]));
+            const result = context.drawImage(toCanvasImageSource(image), ...(drawArgs as number[]));
+            syncVisibleCanvas(domCanvas);
+            return result;
           };
         }
 
@@ -207,9 +240,22 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
           return () => "[object CanvasRenderingContext2D]";
         }
 
+        const prototypeValue = getUserPrototypeValue(wrapper, property);
+        if (prototypeValue !== undefined) {
+          return prototypeValue;
+        }
+
         const context = getCurrentContext(domCanvas);
         const value = Reflect.get(context, property, context);
-        return typeof value === "function" ? value.bind(context) : value;
+        if (typeof value !== "function") {
+          return value;
+        }
+
+        return (...args: unknown[]) => {
+          const result = value.apply(context, args);
+          syncVisibleCanvas(domCanvas);
+          return result;
+        };
       },
 
       set(_target, property, value) {
@@ -235,16 +281,66 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
           Object.getOwnPropertyDescriptor(context, property) ??
           Object.getOwnPropertyDescriptor(Object.getPrototypeOf(context), property)
         );
+      },
+
+      getPrototypeOf() {
+        return CanvasRenderingContext2D.prototype;
       }
     }
   ) as CanvasRenderingContext2D;
 
   wrappers.set(domCanvas, wrapper);
+  wrapperCanvases.set(wrapper, domCanvas);
   return wrapper;
+}
+
+function getUserPrototypeValue(wrapper: CanvasRenderingContext2D, property: string | symbol): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, property);
+
+  if (!descriptor) {
+    return undefined;
+  }
+
+  if (property === "fillRect" && descriptor.value === patchedNativeFillRect) {
+    return undefined;
+  }
+
+  const originalDescriptor = originalContextPrototypeDescriptors[property as keyof typeof originalContextPrototypeDescriptors];
+  if (
+    originalDescriptor &&
+    descriptor.value === originalDescriptor.value &&
+    descriptor.get === originalDescriptor.get &&
+    descriptor.set === originalDescriptor.set
+  ) {
+    return undefined;
+  }
+
+  if ("value" in descriptor) {
+    return typeof descriptor.value === "function" ? descriptor.value.bind(wrapper) : descriptor.value;
+  }
+
+  return descriptor.get?.call(wrapper);
 }
 
 function getCurrentContext(domCanvas: HTMLCanvasElement): Raylib2DContext {
   return getOrCreateBacking(domCanvas).context;
+}
+
+function syncVisibleCanvas(domCanvas: HTMLCanvasElement): void {
+  const backing = getOrCreateBacking(domCanvas);
+
+  if (backing.context.hasOpenLayers()) {
+    return;
+  }
+
+  const nativeContext = originalHTMLCanvasGetContext.call(domCanvas, "2d") as CanvasRenderingContext2D | null;
+
+  if (!nativeContext) {
+    return;
+  }
+
+  const imageData = new ImageData(new Uint8ClampedArray(backing.context.getPixels()), backing.width, backing.height);
+  nativeContext.putImageData(imageData, 0, 0);
 }
 
 function assertCanvasImageSourceHasNoOpenLayers(image: unknown): void {
