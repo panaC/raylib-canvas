@@ -83,6 +83,7 @@ own. The current override points are:
 | `protected getBasePixels()` | Returns the live base RGBA backing store. |
 | `protected fillRectPixels(...)` | Writes an already-normalized solid RGBA rectangle. |
 | `protected clearRectPixels(...)` | Clears an already-normalized rectangle to transparent black. |
+| `protected putImageDataPixels(...)` | Copies already-clipped `CanvasImageData` pixels into the base bitmap. |
 
 ### Context factory injection
 
@@ -105,6 +106,18 @@ class CustomCanvas2DContext extends Canvas2DRenderingContext {
 
   protected clearRectPixels(x: number, y: number, width: number, height: number): void {
     // Forward clear work to another implementation.
+  }
+
+  protected putImageDataPixels(
+    imageData: CanvasImageData,
+    sourceLeft: number,
+    sourceTop: number,
+    sourceRight: number,
+    sourceBottom: number,
+    destX: number,
+    destY: number
+  ): void {
+    // Forward raw ImageData copy work to another implementation.
   }
 
   getPixels(): Uint8ClampedArray {

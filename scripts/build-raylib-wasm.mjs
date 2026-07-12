@@ -8,10 +8,13 @@ const raylibSourceCwd = "vendor/raylib/src";
 const esmOutputFromRaylibSource = "../../../dist/native/raylib-canvas.js";
 const wptOutputFromRaylibSource = "../../../dist/native/raylib-canvas-wpt.js";
 const exportedFunctions = [
+  "_malloc",
+  "_free",
   "_rcl_init",
   "_rcl_destroy",
   "_rcl_fill_rect",
   "_rcl_clear_rect",
+  "_rcl_put_image_data",
   "_rcl_pixels_ptr",
   "_rcl_pixels_len",
   "_rcl_raylib_version_major"

@@ -1522,6 +1522,34 @@ export class Canvas2DRenderingContext implements Canvas2DContext {
     }
   }
 
+  /**
+   * Renderer override point: copies already-clipped ImageData pixels into the base bitmap.
+   * Public putImageData() validation, dirty rectangle handling, and clipping stay there;
+   * renderer subclasses override this narrow pixel copy when they own the backing store.
+   */
+  protected putImageDataPixels(
+    imageData: CanvasImageData,
+    sourceLeft: number,
+    sourceTop: number,
+    sourceRight: number,
+    sourceBottom: number,
+    destX: number,
+    destY: number
+  ): void {
+    for (let sourceY = sourceTop; sourceY < sourceBottom; sourceY += 1) {
+      for (let sourceX = sourceLeft; sourceX < sourceRight; sourceX += 1) {
+        const targetX = destX + sourceX;
+        const targetY = destY + sourceY;
+        const sourceOffset = (sourceY * imageData.width + sourceX) * 4;
+        const targetOffset = (targetY * this.canvas.width + targetX) * 4;
+        this.#pixels[targetOffset] = imageData.data[sourceOffset];
+        this.#pixels[targetOffset + 1] = imageData.data[sourceOffset + 1];
+        this.#pixels[targetOffset + 2] = imageData.data[sourceOffset + 2];
+        this.#pixels[targetOffset + 3] = imageData.data[sourceOffset + 3];
+      }
+    }
+  }
+
   get fillStyle(): string | CanvasGradient | CanvasPattern {
     return this.#fillStyle;
   }
@@ -2525,28 +2553,16 @@ export class Canvas2DRenderingContext implements Canvas2DContext {
     const dirtyTop = clamp(dirtyHeightValue < 0 ? dirtyTopValue + dirtyHeightValue : dirtyTopValue, 0, imageData.height);
     const dirtyRight = clamp(dirtyWidthValue < 0 ? dirtyLeftValue : dirtyLeftValue + dirtyWidthValue, 0, imageData.width);
     const dirtyBottom = clamp(dirtyHeightValue < 0 ? dirtyTopValue : dirtyTopValue + dirtyHeightValue, 0, imageData.height);
-    const pixels = this.getPixels();
+    const clippedSourceLeft = Math.max(dirtyLeft, -destX);
+    const clippedSourceTop = Math.max(dirtyTop, -destY);
+    const clippedSourceRight = Math.min(dirtyRight, this.canvas.width - destX);
+    const clippedSourceBottom = Math.min(dirtyBottom, this.canvas.height - destY);
 
-    for (let sourceY = dirtyTop; sourceY < dirtyBottom; sourceY += 1) {
-      const targetY = destY + sourceY;
-      if (targetY < 0 || targetY >= this.canvas.height) {
-        continue;
-      }
-
-      for (let sourceX = dirtyLeft; sourceX < dirtyRight; sourceX += 1) {
-        const targetX = destX + sourceX;
-        if (targetX < 0 || targetX >= this.canvas.width) {
-          continue;
-        }
-
-        const sourceOffset = (sourceY * imageData.width + sourceX) * 4;
-        const targetOffset = (targetY * this.canvas.width + targetX) * 4;
-        pixels[targetOffset] = imageData.data[sourceOffset];
-        pixels[targetOffset + 1] = imageData.data[sourceOffset + 1];
-        pixels[targetOffset + 2] = imageData.data[sourceOffset + 2];
-        pixels[targetOffset + 3] = imageData.data[sourceOffset + 3];
-      }
+    if (clippedSourceRight <= clippedSourceLeft || clippedSourceBottom <= clippedSourceTop) {
+      return;
     }
+
+    this.putImageDataPixels(imageData, clippedSourceLeft, clippedSourceTop, clippedSourceRight, clippedSourceBottom, destX, destY);
   }
 
   transform(a: number, b: number, c: number, d: number, e: number, f: number): void {

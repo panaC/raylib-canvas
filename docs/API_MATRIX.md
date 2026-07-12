@@ -25,6 +25,7 @@
   - `protected getBasePixels()` returns the live base RGBA backing store.
   - `protected fillRectPixels(...)` writes an already-normalized solid RGBA rectangle.
   - `protected clearRectPixels(...)` clears an already-normalized rectangle to transparent black.
+  - `protected putImageDataPixels(...)` copies already-clipped `CanvasImageData` pixels into the base bitmap.
 
 | API method name | canvas official web reference | status (waiting/not-planned/partial/done) |
 | --- | --- | --- |

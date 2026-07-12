@@ -105,6 +105,44 @@ void rcl_clear_rect(RclCanvas *canvas, double x, double y, double width, double 
     rcl_fill_rect_color(canvas, x, y, width, height, BLANK);
 }
 
+void rcl_put_image_data(
+    RclCanvas *canvas,
+    const unsigned char *source,
+    int source_width,
+    int source_left,
+    int source_top,
+    int source_right,
+    int source_bottom,
+    int dest_x,
+    int dest_y
+)
+{
+    if ((canvas == NULL) || (source == NULL)) return;
+    if (source_width <= 0) return;
+    if (source_left < 0 || source_top < 0 || source_right < source_left || source_bottom < source_top) return;
+
+    unsigned char *target = (unsigned char *)canvas->image.data;
+    if (target == NULL) return;
+
+    for (int source_y = source_top; source_y < source_bottom; source_y++)
+    {
+        int target_y = dest_y + source_y;
+        if ((target_y < 0) || (target_y >= canvas->height)) continue;
+
+        int target_x = dest_x + source_left;
+        if ((target_x < 0) || (target_x + (source_right - source_left) > canvas->width)) continue;
+
+        size_t source_offset = ((size_t)source_y*(size_t)source_width + (size_t)source_left)*4u;
+        size_t target_offset = ((size_t)target_y*(size_t)canvas->width + (size_t)target_x)*4u;
+        size_t byte_length = (size_t)(source_right - source_left)*4u;
+
+        for (size_t index = 0; index < byte_length; index++)
+        {
+            target[target_offset + index] = source[source_offset + index];
+        }
+    }
+}
+
 unsigned char *rcl_pixels_ptr(RclCanvas *canvas)
 {
     if (canvas == NULL) return NULL;

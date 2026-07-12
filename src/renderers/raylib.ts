@@ -1,10 +1,12 @@
-import { Canvas2DRenderingContext, type Rgba } from "../context";
+import { Canvas2DRenderingContext, type CanvasImageData, type Rgba } from "../context";
 import type { Canvas, Canvas2DContextFactory } from "../index";
 
 declare const RAYLIB_CANVAS_IMPORT_META_URL: string | undefined;
 
 export interface RaylibCanvasWasmModule {
   readonly HEAPU8: Uint8Array;
+  _malloc(size: number): number;
+  _free(pointer: number): void;
   _rcl_init(width: number, height: number): number;
   _rcl_destroy(handle: number): void;
   _rcl_fill_rect(
@@ -19,6 +21,17 @@ export interface RaylibCanvasWasmModule {
     alpha: number
   ): void;
   _rcl_clear_rect(handle: number, x: number, y: number, width: number, height: number): void;
+  _rcl_put_image_data(
+    handle: number,
+    sourcePointer: number,
+    sourceWidth: number,
+    sourceLeft: number,
+    sourceTop: number,
+    sourceRight: number,
+    sourceBottom: number,
+    destX: number,
+    destY: number
+  ): void;
   _rcl_pixels_ptr(handle: number): number;
   _rcl_pixels_len(handle: number): number;
 }
@@ -45,6 +58,8 @@ export class RaylibCanvas2DContext extends Canvas2DRenderingContext {
   #pixelPointer: number;
   #pixelLength: number;
   #pixels: Uint8ClampedArray;
+  #scratchPointer = 0;
+  #scratchLength = 0;
 
   constructor(canvas: Canvas, module: RaylibCanvasWasmModule) {
     super(canvas);
@@ -82,6 +97,34 @@ export class RaylibCanvas2DContext extends Canvas2DRenderingContext {
     this.#refreshPixelsView();
   }
 
+  protected override putImageDataPixels(
+    imageData: CanvasImageData,
+    sourceLeft: number,
+    sourceTop: number,
+    sourceRight: number,
+    sourceBottom: number,
+    destX: number,
+    destY: number
+  ): void {
+    this.#assertNotDisposed();
+    const sourcePointer = this.#ensureScratchBuffer(imageData.data.byteLength);
+
+    this.#module.HEAPU8.set(imageData.data, sourcePointer);
+    this.#module._rcl_put_image_data(
+      this.#handle,
+      sourcePointer,
+      imageData.width,
+      sourceLeft,
+      sourceTop,
+      sourceRight,
+      sourceBottom,
+      destX,
+      destY
+    );
+
+    this.#refreshPixelsView();
+  }
+
   protected override getBasePixels(): Uint8ClampedArray {
     this.#assertNotDisposed();
     this.#refreshPixelsView();
@@ -94,6 +137,7 @@ export class RaylibCanvas2DContext extends Canvas2DRenderingContext {
     }
 
     this.#module._rcl_destroy(this.#handle);
+    this.#freeScratchBuffer();
     this.#handle = 0;
     this.#pixelPointer = 0;
     this.#pixelLength = 0;
@@ -108,6 +152,37 @@ export class RaylibCanvas2DContext extends Canvas2DRenderingContext {
     if (this.#pixels.buffer !== this.#module.HEAPU8.buffer) {
       this.#pixels = this.#createPixelsView();
     }
+  }
+
+  #ensureScratchBuffer(byteLength: number): number {
+    // TODO: Revisit ImageData transfer strategy:
+    // 1. keep reusing this grow-only scratch buffer,
+    // 2. pack only the clipped dirty rectangle into WASM memory,
+    // 3. or skip the C bridge and copy directly into the live WASM pixel view.
+    if (this.#scratchPointer !== 0 && this.#scratchLength >= byteLength) {
+      return this.#scratchPointer;
+    }
+
+    this.#freeScratchBuffer();
+    const pointer = this.#module._malloc(byteLength);
+
+    if (pointer === 0) {
+      throw new Error("raylib image data allocation failed");
+    }
+
+    this.#scratchPointer = pointer;
+    this.#scratchLength = byteLength;
+    return pointer;
+  }
+
+  #freeScratchBuffer(): void {
+    if (this.#scratchPointer === 0) {
+      return;
+    }
+
+    this.#module._free(this.#scratchPointer);
+    this.#scratchPointer = 0;
+    this.#scratchLength = 0;
   }
 
   #assertNotDisposed(): void {
@@ -262,10 +337,13 @@ function isRaylibCanvasWasmModule(value: unknown): value is RaylibCanvasWasmModu
     typeof candidate === "object" &&
     candidate !== null &&
     candidate.HEAPU8 instanceof Uint8Array &&
+    typeof candidate._malloc === "function" &&
+    typeof candidate._free === "function" &&
     typeof candidate._rcl_init === "function" &&
     typeof candidate._rcl_destroy === "function" &&
     typeof candidate._rcl_fill_rect === "function" &&
     typeof candidate._rcl_clear_rect === "function" &&
+    typeof candidate._rcl_put_image_data === "function" &&
     typeof candidate._rcl_pixels_ptr === "function" &&
     typeof candidate._rcl_pixels_len === "function"
   );
