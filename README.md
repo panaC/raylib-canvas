@@ -181,11 +181,13 @@ WPT details, including the pinned upstream commit and smoke-suite scope, live in
 
 Latest checked WPT smoke report: [test-results/wpt/smoke-report.json](test-results/wpt/smoke-report.json)
 
-- 12 official upstream HTML Canvas files executed.
-- 12 files reported expected results.
+- 507 official upstream HTML Canvas files executed.
+- 507 files reported expected results.
 - 0 unexpected files.
 - 0 unexpected subtests/results.
-- Covered areas: context creation/sharing, `fillRect()`, `clearRect()`, `fillStyle`, and `getImageData()`.
+- Covered areas include context creation/sharing, rectangle drawing, paths, colors,
+  gradients, patterns, shadows, filters, layers, text state, `drawImage()`,
+  compositing, pixel manipulation, reset, and transforms.
 
 The pdf.js integration test renders page 1 of [tests/pdfjs/compressed.tracemonkey-pldi-09.pdf](tests/pdfjs/compressed.tracemonkey-pldi-09.pdf) through `pdfjs-dist`, using this package as the canvas factory. The JavaScript context writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png), and the raylib WASM context writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png). Each lane asserts:
 
@@ -195,12 +197,12 @@ The pdf.js integration test renders page 1 of [tests/pdfjs/compressed.tracemonke
 
 Latest checked pdf.js cover timing report: [test-results/pdfjs/cover-render-performance.json](test-results/pdfjs/cover-render-performance.json)
 
-Single-run local timings from `npm run test:pdfjs` followed by `npm run test:pdfjs:raylib` on July 10, 2026:
+Latest recorded cover timings from `test-results/pdfjs/cover-render-performance.json`:
 
 | Context | PDF load | Page load | Render | PNG encode | PNG write | Total cover generation |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| JavaScript context | 121.00 ms | 1.76 ms | 390.44 ms | 85.08 ms | 2.19 ms | 647.77 ms |
-| raylib WASM context | 112.53 ms | 2.65 ms | 407.32 ms | 62.75 ms | 1.75 ms | 634.07 ms |
+| JavaScript context | 121.91 ms | 1.94 ms | 1681.09 ms | 67.91 ms | 1.64 ms | 1919.31 ms |
+| raylib WASM context | 140.99 ms | 1.14 ms | 1603.05 ms | 89.60 ms | 1.46 ms | 1885.64 ms |
 
 | JavaScript context | raylib WASM context |
 | --- | --- |
