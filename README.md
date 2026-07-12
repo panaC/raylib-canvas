@@ -189,7 +189,7 @@ Latest checked WPT smoke report: [test-results/wpt/smoke-report.json](test-resul
   gradients, patterns, shadows, filters, layers, text state, `drawImage()`,
   compositing, pixel manipulation, reset, and transforms.
 
-The pdf.js integration test renders page 1 of [tests/pdfjs/compressed.tracemonkey-pldi-09.pdf](tests/pdfjs/compressed.tracemonkey-pldi-09.pdf) through `pdfjs-dist`, using this package as the canvas factory. The JavaScript context writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png), and the raylib WASM context writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png). Each lane asserts:
+The pdf.js integration test renders page 1 of [tests/pdfjs/compressed.tracemonkey-pldi-09.pdf](tests/pdfjs/compressed.tracemonkey-pldi-09.pdf) through `pdfjs-dist`, using this package as the canvas factory. The JavaScript context writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png), the raylib WASM context writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png), and the native DOM canvas reference writes [tests/pdfjs/compressed.tracemonkey-pldi-09-cover-native.png](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-native.png). Each lane asserts:
 
 - PNG signature is valid.
 - Image size is `612x792`.
@@ -201,9 +201,10 @@ Latest recorded cover timings from `test-results/pdfjs/cover-render-performance.
 
 | Context | PDF load | Page load | Render | PNG encode | PNG write | Total cover generation |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| JavaScript context | 121.91 ms | 1.94 ms | 1681.09 ms | 67.91 ms | 1.64 ms | 1919.31 ms |
-| raylib WASM context | 140.99 ms | 1.14 ms | 1603.05 ms | 89.60 ms | 1.46 ms | 1885.64 ms |
+| JavaScript context | 117.63 ms | 1.38 ms | 1654.58 ms | 65.90 ms | 2.12 ms | 1889.43 ms |
+| raylib WASM context | 123.24 ms | 1.03 ms | 1562.89 ms | 61.37 ms | 1.94 ms | 1795.80 ms |
+| native DOM canvas | 204.80 ms | 4.10 ms | 146.40 ms | 34.40 ms | 1.70 ms | 438.70 ms |
 
-| JavaScript context | raylib WASM context |
-| --- | --- |
-| ![pdf.js cover rendered through the JavaScript context](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png) | ![pdf.js cover rendered through the raylib WASM context](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png) |
+| JavaScript context | raylib WASM context | native DOM canvas |
+| --- | --- | --- |
+| ![pdf.js cover rendered through the JavaScript context](tests/pdfjs/compressed.tracemonkey-pldi-09-cover.png) | ![pdf.js cover rendered through the raylib WASM context](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-raylib.png) | ![pdf.js cover rendered through native DOM canvas](tests/pdfjs/compressed.tracemonkey-pldi-09-cover-native.png) |
