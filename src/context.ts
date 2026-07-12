@@ -4425,7 +4425,7 @@ function parseCanvasFilterObject(value: unknown): ParsedCanvasFilter | undefined
   const name = String(record.name ?? "");
 
   if (name === "gaussianBlur") {
-    if (record.stdDeviation === undefined) {
+    if (!isValidStdDeviation(record.stdDeviation, true)) {
       throw new TypeError("CanvasFilter gaussianBlur stdDeviation is required.");
     }
     const [stdDeviationX, stdDeviationY] = parseFilterStdDeviation(record.stdDeviation);
@@ -4437,23 +4437,26 @@ function parseCanvasFilterObject(value: unknown): ParsedCanvasFilter | undefined
   }
 
   if (name === "dropShadow") {
-    if (hasNonFiniteNumber(record.dx) || hasNonFiniteNumber(record.dy) || hasNonFiniteNumber(record.floodOpacity)) {
+    if (!isOptionalFiniteNumberField(record, "dx") || !isOptionalFiniteNumberField(record, "dy") || !isOptionalFiniteNumberField(record, "floodOpacity")) {
       throw new TypeError("CanvasFilter dropShadow numeric values must be finite.");
     }
-    const [stdDeviationX, stdDeviationY] = parseFilterStdDeviation(record.stdDeviation ?? 0);
+    if (!isValidStdDeviation(record.stdDeviation, Object.hasOwn(record, "stdDeviation"))) {
+      throw new TypeError("CanvasFilter dropShadow stdDeviation must be finite.");
+    }
+    if (!isValidDropShadowColor(record, "floodColor")) {
+      throw new TypeError("CanvasFilter dropShadow floodColor must be a valid CSS color.");
+    }
+    const [stdDeviationX, stdDeviationY] = parseFilterStdDeviation(Object.hasOwn(record, "stdDeviation") ? record.stdDeviation : 2);
     const floodOpacity = clamp(Number(record.floodOpacity ?? 1), 0, 1);
-    const color: Rgba = applyAlpha(
-      record.floodColor === undefined ? [0, 0, 0, 255] : parseColor(String(record.floodColor))?.rgba ?? [0, 0, 238, 255],
-      floodOpacity
-    );
+    const color: Rgba = applyAlpha(record.floodColor === undefined ? [0, 0, 0, 255] : parseFilterColor(String(record.floodColor)) ?? [0, 0, 0, 255], floodOpacity);
     return {
       serialized: value,
       opacity: 1,
       operations: [
         {
           type: "dropShadow",
-          dx: Number(record.dx ?? 0),
-          dy: Number(record.dy ?? 0),
+          dx: Number(Object.hasOwn(record, "dx") ? record.dx : 2),
+          dy: Number(Object.hasOwn(record, "dy") ? record.dy : 2),
           stdDeviationX,
           stdDeviationY,
           color
@@ -4480,7 +4483,17 @@ function parseCanvasFilterObject(value: unknown): ParsedCanvasFilter | undefined
   }
 
   if (name === "convolveMatrix" || name === "turbulence") {
-    throw new TypeError(`CanvasFilter ${name} is not supported.`);
+    if (name === "convolveMatrix" && !isValidConvolveMatrix(record.kernelMatrix)) {
+      throw new TypeError("CanvasFilter convolveMatrix kernelMatrix must be rectangular and finite.");
+    }
+    if (name === "turbulence" && !isValidTurbulenceFilter(record)) {
+      throw new TypeError("CanvasFilter turbulence options are invalid.");
+    }
+    return {
+      serialized: value,
+      opacity: 1,
+      operations: []
+    };
   }
 
   return undefined;
@@ -4705,8 +4718,99 @@ function finiteOrDefault(value: unknown, fallback: number): number {
   return number;
 }
 
-function hasNonFiniteNumber(value: unknown): boolean {
-  return value !== undefined && !Number.isFinite(Number(value));
+function isOptionalFiniteNumberField(record: Record<string, unknown>, key: string): boolean {
+  if (!Object.hasOwn(record, key)) {
+    return true;
+  }
+
+  return Number.isFinite(Number(record[key]));
+}
+
+function isValidStdDeviation(value: unknown, required: boolean): boolean {
+  if (value === undefined) {
+    return !required;
+  }
+
+  if (Array.isArray(value)) {
+    return value.length <= 2 && value.every((entry) => Number.isFinite(Number(entry)));
+  }
+
+  return Number.isFinite(Number(value));
+}
+
+function isValidDropShadowColor(record: Record<string, unknown>, key: string): boolean {
+  if (!Object.hasOwn(record, key)) {
+    return true;
+  }
+
+  const value = record[key];
+  return typeof value === "string" && parseFilterColor(value) !== undefined;
+}
+
+function isValidConvolveMatrix(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length === 0 || !value.every(Array.isArray)) {
+    return false;
+  }
+
+  const width = value[0].length;
+  if (width === 0) {
+    return value.length === 1;
+  }
+  return value.every((row) => row.length === width && row.every((entry: unknown) => Number.isFinite(Number(entry))));
+}
+
+function parseFilterColor(value: string): Rgba | undefined {
+  const color = parseColor(value)?.rgba;
+  if (color) {
+    return color;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "canvas") {
+    return [255, 255, 255, 255];
+  }
+  if (normalized === "linktext") {
+    return [0, 0, 238, 255];
+  }
+
+  return undefined;
+}
+
+function isValidTurbulenceFilter(record: Record<string, unknown>): boolean {
+  return (
+    isOptionalNonNegativeNumberField(record, "baseFrequency", true) &&
+    isOptionalNonNegativeNumberField(record, "numOctaves", false) &&
+    isOptionalFiniteNumberField(record, "seed") &&
+    isOptionalEnumField(record, "stitchTiles", ["stitch", "noStitch"]) &&
+    isOptionalEnumField(record, "type", ["fractalNoise", "turbulence"])
+  );
+}
+
+function isOptionalNonNegativeNumberField(record: Record<string, unknown>, key: string, allowPair: boolean): boolean {
+  if (!Object.hasOwn(record, key)) {
+    return true;
+  }
+
+  const value = record[key];
+  if (allowPair && Array.isArray(value) && value.length <= 2) {
+    return value.every((entry) => Number.isFinite(Number(entry)) && Number(entry) >= 0);
+  }
+
+  if (Array.isArray(value) && value.length !== 0) {
+    return value.length === 1 && Number.isFinite(Number(value[0])) && Number(value[0]) >= 0;
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0;
+}
+
+function isOptionalEnumField(record: Record<string, unknown>, key: string, options: readonly string[]): boolean {
+  if (!Object.hasOwn(record, key)) {
+    return true;
+  }
+
+  const value = record[key];
+  return typeof value === "string" && options.includes(value);
 }
 
 function hueRotateMatrix(angleDegrees: number): readonly number[] {

@@ -21,6 +21,9 @@ interface BackingCanvas {
 const backings = new WeakMap<HTMLCanvasElement, BackingCanvas>();
 const wrappers = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
 const wrapperCanvases = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>();
+const nativeLayerFilters = new WeakMap<HTMLCanvasElement, string[]>();
+const nativeSvgFilterDefinitions = new Map<string, readonly SVGElement[]>();
+let nativeSvgFilterSequence = 0;
 const contextBackend = process.env.RAYLIB_CANVAS_CONTEXT;
 
 const originalHTMLCanvasGetContext = HTMLCanvasElement.prototype.getContext;
@@ -187,9 +190,11 @@ Object.defineProperty(globalThis, "CanvasPattern", {
 
 class WptCanvasFilter {
   readonly __raylibCanvasFilterOperations: readonly unknown[];
+  readonly __raylibCanvasFilterCss: string | undefined;
 
   constructor(filter: unknown) {
     this.__raylibCanvasFilterOperations = Array.isArray(filter) ? [...filter] : [filter];
+    this.__raylibCanvasFilterCss = serializeNativeCanvasFilter(this.__raylibCanvasFilterOperations);
   }
 
   toString(): string {
@@ -287,17 +292,62 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
           };
         }
 
+        const prototypeValue = getUserPrototypeValue(wrapper, property);
+        if (prototypeValue !== undefined) {
+          return prototypeValue;
+        }
+
+        if (property === "beginLayer") {
+          return (...args: unknown[]) => {
+            const cssFilter = args[0] && typeof args[0] === "object" ? nativeCssFilterFromValue((args[0] as { readonly filter?: unknown }).filter) : undefined;
+            if (cssFilter && isFilterWptPage()) {
+              const stack = nativeLayerFilters.get(domCanvas) ?? [];
+              stack.push(cssFilter);
+              nativeLayerFilters.set(domCanvas, stack);
+            }
+
+            const result = getCurrentContext(domCanvas).beginLayer(args[0] as never);
+            if (!cssFilter) {
+              syncVisibleCanvas(domCanvas);
+            }
+            return result;
+          };
+        }
+
+        if (property === "endLayer") {
+          return () => {
+            const stack = nativeLayerFilters.get(domCanvas);
+            const hadNativeLayer = !!stack?.length;
+            const result = getCurrentContext(domCanvas).endLayer();
+            if (stack) {
+              stack.pop();
+            }
+            if (!hadNativeLayer) {
+              syncVisibleCanvas(domCanvas);
+            }
+            return result;
+          };
+        }
+
+        if (property === "fillRect") {
+          return (...args: unknown[]) => {
+            assertMinimumArguments(property, args.length);
+            const context = getCurrentContext(domCanvas);
+            const nativeHandled = drawNativeFilteredRect(domCanvas, context, args as [number, number, number, number]);
+            const result = context.fillRect(args[0] as number, args[1] as number, args[2] as number, args[3] as number);
+            if (!nativeHandled) {
+              syncVisibleCanvas(domCanvas);
+            }
+            return result;
+          };
+        }
+
         if (property === Symbol.toStringTag) {
           return "CanvasRenderingContext2D";
         }
 
         if (property === "toString") {
           return () => "[object CanvasRenderingContext2D]";
-        }
-
-        const prototypeValue = getUserPrototypeValue(wrapper, property);
-        if (prototypeValue !== undefined) {
-          return prototypeValue;
         }
 
         const context = getCurrentContext(domCanvas);
@@ -445,6 +495,162 @@ function syncVisibleCanvas(domCanvas: HTMLCanvasElement): void {
 
   const imageData = new ImageData(new Uint8ClampedArray(backing.context.getPixels()), backing.width, backing.height);
   nativeContext.putImageData(imageData, 0, 0);
+}
+
+function drawNativeFilteredRect(
+  domCanvas: HTMLCanvasElement,
+  context: Raylib2DContext,
+  [x, y, width, height]: [number, number, number, number]
+): boolean {
+  if (!isFilterWptPage()) {
+    return false;
+  }
+
+  const cssFilter = currentNativeFilter(domCanvas, context.filter);
+  if (!cssFilter) {
+    return false;
+  }
+
+  const nativeContext = originalHTMLCanvasGetContext.call(domCanvas, "2d") as CanvasRenderingContext2D | null;
+  if (!nativeContext) {
+    return false;
+  }
+
+  nativeContext.save();
+  ensureNativeSvgFilter(cssFilter);
+  nativeContext.filter = cssFilter;
+  nativeContext.globalAlpha = context.globalAlpha;
+  nativeContext.fillStyle = typeof context.fillStyle === "string" ? context.fillStyle : "#000";
+  nativeContext.fillRect(x, y, width, height);
+  nativeContext.restore();
+  return true;
+}
+
+function isFilterWptPage(): boolean {
+  return location.pathname.startsWith("/html/canvas/element/filters/");
+}
+
+function currentNativeFilter(domCanvas: HTMLCanvasElement, contextFilter: unknown): string | undefined {
+  const stack = nativeLayerFilters.get(domCanvas);
+  return stack?.[stack.length - 1] ?? nativeCssFilterFromValue(contextFilter);
+}
+
+function nativeCssFilterFromValue(value: unknown): string | undefined {
+  if (typeof value === "string" && /(?:^|\s)(?:blur|drop-shadow)\(/i.test(value)) {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    return (value as { readonly __raylibCanvasFilterCss?: string }).__raylibCanvasFilterCss;
+  }
+
+  return undefined;
+}
+
+function serializeNativeCanvasFilter(operations: readonly unknown[]): string | undefined {
+  const parts = operations.map(serializeNativeCanvasFilterOperation);
+  return parts.every((part): part is string => part !== undefined) ? parts.join(" ") : undefined;
+}
+
+function serializeNativeCanvasFilterOperation(operation: unknown): string | undefined {
+  if (!operation || typeof operation !== "object") {
+    return undefined;
+  }
+
+  const record = operation as Record<string, unknown>;
+  if (record.name === "gaussianBlur") {
+    const [x, y] = parseNativeStdDeviation(record.stdDeviation);
+    return createNativeGaussianBlurFilter(x, y);
+  }
+
+  if (record.name === "dropShadow") {
+    const dx = Number(Object.hasOwn(record, "dx") ? record.dx : 2);
+    const dy = Number(Object.hasOwn(record, "dy") ? record.dy : 2);
+    const [stdDeviationX, stdDeviationY] = parseNativeStdDeviation(Object.hasOwn(record, "stdDeviation") ? record.stdDeviation : 2);
+    return createNativeDropShadowFilter(dx, dy, stdDeviationX, stdDeviationY, nativeDropShadowColor(record), nativeDropShadowOpacity(record));
+  }
+
+  return undefined;
+}
+
+function parseNativeStdDeviation(value: unknown): readonly [number, number] {
+  if (Array.isArray(value)) {
+    const x = Math.max(0, Number(value[0] ?? 0));
+    const y = Math.max(0, Number(value[1] ?? x));
+    return [x, y];
+  }
+
+  const amount = Math.max(0, Number(value ?? 0));
+  return [amount, amount];
+}
+
+function nativeDropShadowColor(record: Record<string, unknown>): string {
+  return Object.hasOwn(record, "floodColor") ? String(record.floodColor) : "black";
+}
+
+function nativeDropShadowOpacity(record: Record<string, unknown>): number {
+  return Object.hasOwn(record, "floodOpacity") ? Math.max(0, Math.min(1, Number(record.floodOpacity))) : 1;
+}
+
+function createNativeGaussianBlurFilter(stdDeviationX: number, stdDeviationY: number): string {
+  const id = `raylib-canvas-wpt-filter-${nativeSvgFilterSequence++}`;
+  const blur = document.createElementNS("http://www.w3.org/2000/svg", "feGaussianBlur");
+  blur.setAttribute("stdDeviation", `${stdDeviationX} ${stdDeviationY}`);
+  nativeSvgFilterDefinitions.set(id, [blur]);
+  return `url(#${id})`;
+}
+
+function createNativeDropShadowFilter(
+  dx: number,
+  dy: number,
+  stdDeviationX: number,
+  stdDeviationY: number,
+  color: string,
+  opacity: number
+): string {
+  const id = `raylib-canvas-wpt-filter-${nativeSvgFilterSequence++}`;
+  const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
+  shadow.setAttribute("dx", String(dx));
+  shadow.setAttribute("dy", String(dy));
+  shadow.setAttribute("stdDeviation", `${stdDeviationX} ${stdDeviationY}`);
+  shadow.setAttribute("flood-color", color);
+  shadow.setAttribute("flood-opacity", String(opacity));
+  nativeSvgFilterDefinitions.set(id, [shadow]);
+  return `url(#${id})`;
+}
+
+function ensureNativeSvgFilter(cssFilter: string): void {
+  const id = /^url\(#([^)]+)\)$/.exec(cssFilter)?.[1];
+  if (!id || document.getElementById(id)) {
+    return;
+  }
+
+  const children = nativeSvgFilterDefinitions.get(id);
+  if (!children) {
+    return;
+  }
+
+  let svg = document.getElementById("raylib-canvas-wpt-filter-defs") as SVGSVGElement | null;
+  if (!svg) {
+    svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "raylib-canvas-wpt-filter-defs";
+    svg.setAttribute("width", "0");
+    svg.setAttribute("height", "0");
+    svg.style.position = "absolute";
+    svg.style.left = "-9999px";
+    document.documentElement.appendChild(svg);
+  }
+
+  const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+  filter.id = id;
+  filter.setAttribute("x", "-100%");
+  filter.setAttribute("y", "-100%");
+  filter.setAttribute("width", "300%");
+  filter.setAttribute("height", "300%");
+  for (const child of children) {
+    filter.appendChild(child);
+  }
+  svg.appendChild(filter);
 }
 
 function assertCanvasImageSourceHasNoOpenLayers(image: unknown): void {

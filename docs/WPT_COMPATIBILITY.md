@@ -134,6 +134,12 @@ covers official upstream files for:
 - `imageSmoothingEnabled` and `imageSmoothingQuality` default, assignment, and
   save/restore behavior; quality is stored as a hint, while rendering currently
   switches between nearest-neighbor and bilinear smoothing
+- `filter` value/state behavior plus CanvasFilter object smoke coverage for
+  gaussianBlur validation, colorMatrix rendering, componentTransfer rendering,
+  dropShadow validation/defaults, convolveMatrix validation, turbulence input
+  validation, and layer filter option validation; exact gaussianBlur and
+  dropShadow visual reftests remain partial because the software rasterization
+  is not browser-hash-identical
 - `reset()` bitmap clearing and drawing-state reset behavior, including styles,
   shadows, filters, line state, text state, image smoothing, clipping, and
   transforms; heavier reset rendering reference tests remain partial

@@ -124,7 +124,7 @@
     {
       "status": "blocked",
       "prefix": "html/canvas/element/filters/",
-      "reason": "Filter state has smoke coverage and opacity() has unit rendering coverage; full filter parsing, blur rendering, drop-shadow, CanvasFilter objects, and filter layers remain incomplete."
+      "reason": "Filter state, opacity() unit rendering, CanvasFilter object identity/validation, colorMatrix rendering, componentTransfer rendering, gaussianBlur/dropShadow validation/defaults, and layer filter option validation have smoke coverage; remaining filter tests require browser-exact gaussianBlur/dropShadow visual reftest fidelity."
     },
     {
       "status": "blocked",
