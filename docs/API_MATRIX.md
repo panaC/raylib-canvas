@@ -99,3 +99,16 @@
 | `putImageData(imageData, dx, dy, ...)` | [WHATWG putImageData](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-putimagedata-dev) | done |
 | `imageSmoothingEnabled` | [WHATWG imageSmoothingEnabled](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingenabled-dev) | done |
 | `imageSmoothingQuality` | [WHATWG imageSmoothingQuality](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-imagesmoothingquality-dev) | done |
+
+## coverage notes
+
+- `createPattern(image, repetition)` accepts canvas, `CanvasImageData`, and host
+  RGBA image sources; decoded browser image resources remain partial.
+- `drawImage(...)` accepts canvas, `CanvasImageData`, and host RGBA image
+  sources, with WPT shim coverage for browser `HTMLImageElement` and
+  `ImageBitmap` readback plus the upstream `drawing-images-to-the-canvas/`
+  element directory; manual decoded-resource edge cases, tainting, and
+  browser-exact smoothing remain partial.
+- `globalCompositeOperation` covers solid, canvas, image, transparent-source,
+  clipped, and globalAlpha canvas/image/pattern WPT cases; full-mode/grid
+  reftest fidelity and uncovered fill/image/pattern edge cases remain partial.

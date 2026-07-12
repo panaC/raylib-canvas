@@ -1,5 +1,13 @@
 import type { Canvas } from "./index";
 
+export interface CanvasImageSourceData {
+  readonly width: number;
+  readonly height: number;
+  readonly data: Uint8ClampedArray;
+}
+
+export type CanvasImageSource = Canvas | CanvasImageData | CanvasImageSourceData;
+
 export interface Canvas2DContext {
   /**
    * Canvas associated with this rendering context.
@@ -209,7 +217,7 @@ export interface Canvas2DContext {
    * Creates a pattern style from another canvas.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-createpattern-dev
    */
-  createPattern(image: Canvas, repetition?: string | null): CanvasPattern | null;
+  createPattern(image: CanvasImageSource, repetition?: string | null): CanvasPattern | null;
 
   /**
    * Resets the rendering context state and clears the canvas bitmap.
@@ -309,10 +317,10 @@ export interface Canvas2DContext {
    * Draws another canvas into this canvas.
    * @see https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-drawimage-dev
    */
-  drawImage(image: Canvas, dx: number, dy: number): void;
-  drawImage(image: Canvas, dx: number, dy: number, dWidth: number, dHeight: number): void;
+  drawImage(image: CanvasImageSource, dx: number, dy: number): void;
+  drawImage(image: CanvasImageSource, dx: number, dy: number, dWidth: number, dHeight: number): void;
   drawImage(
-    image: Canvas,
+    image: CanvasImageSource,
     sx: number,
     sy: number,
     sWidth: number,
@@ -666,7 +674,7 @@ type Paint = {
 };
 
 type DrawImageGeometry = {
-  readonly sourceCanvas: Canvas;
+  readonly source: ResolvedCanvasImageSource;
   readonly sourceX: number;
   readonly sourceY: number;
   readonly sourceWidth: number;
@@ -675,6 +683,13 @@ type DrawImageGeometry = {
   readonly destY: number;
   readonly destWidth: number;
   readonly destHeight: number;
+};
+
+type ResolvedCanvasImageSource = {
+  readonly width: number;
+  readonly height: number;
+  readonly pixels: Uint8ClampedArray;
+  readonly assertUsable?: () => void;
 };
 
 type NormalizedRect = {
@@ -1367,10 +1382,10 @@ export class CanvasGradient {
 }
 
 export class CanvasPattern {
-  readonly image: Canvas;
+  readonly image: ResolvedCanvasImageSource;
   readonly repetition: CanvasPatternRepetition;
 
-  constructor(image: Canvas, repetition: CanvasPatternRepetition) {
+  constructor(image: ResolvedCanvasImageSource, repetition: CanvasPatternRepetition) {
     this.image = image;
     this.repetition = repetition;
   }
@@ -1383,7 +1398,7 @@ export class CanvasPattern {
       return TRANSPARENT_BLACK;
     }
 
-    const source = this.image.getContext("2d").getPixels();
+    const source = this.image.pixels;
     const offset = (sourceY * this.image.width + sourceX) * 4;
     return [source[offset], source[offset + 1], source[offset + 2], source[offset + 3]];
   }
@@ -1806,20 +1821,22 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     return new CanvasGradient({ type: "conic", startAngle, x, y });
   }
 
-  createPattern(image: Canvas, repetition: string | null = "repeat"): CanvasPattern | null {
+  createPattern(image: CanvasImageSource, repetition: string | null = "repeat"): CanvasPattern | null {
     const normalized = normalizePatternRepetition(repetition);
 
     if (!normalized) {
       throw createSyntaxError("The repetition value is not supported.");
     }
 
-    if (!isCanvasImageSource(image)) {
+    const source = resolveCanvasImageSource(image);
+
+    if (!source) {
       return null;
     }
 
-    assertCanvasSourceUsable(image);
+    source.assertUsable?.();
 
-    return new CanvasPattern(image, normalized);
+    return new CanvasPattern(source, normalized);
   }
 
   beginLayer(options: CanvasLayerOptions | null = null): void {
@@ -2230,10 +2247,10 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     return new CanvasTextMetrics(measureFallbackTextWidth(textString, metrics.size, this.#letterSpacing, this.#wordSpacing), metrics.size);
   }
 
-  drawImage(image: Canvas, dx: number, dy: number): void;
-  drawImage(image: Canvas, dx: number, dy: number, dWidth: number, dHeight: number): void;
+  drawImage(image: CanvasImageSource, dx: number, dy: number): void;
+  drawImage(image: CanvasImageSource, dx: number, dy: number, dWidth: number, dHeight: number): void;
   drawImage(
-    image: Canvas,
+    image: CanvasImageSource,
     sx: number,
     sy: number,
     sWidth: number,
@@ -2243,24 +2260,31 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     dWidth: number,
     dHeight: number
   ): void;
-  drawImage(image: Canvas, ...args: number[]): void {
-    if (!isCanvasImageSource(image)) {
+  drawImage(image: CanvasImageSource, ...args: number[]): void {
+    const source = resolveCanvasImageSource(image);
+
+    if (!source) {
       throw createTypeMismatchError("The image argument is not a supported CanvasImageSource.");
     }
 
-    assertCanvasSourceUsable(image);
+    source.assertUsable?.();
 
-    const geometry = normalizeDrawImageArguments(image, args);
+    if (source.width === 0 || source.height === 0) {
+      throw createInvalidStateError("The image source has zero width or height.");
+    }
+
+    const geometry = normalizeDrawImageArguments(source, args);
 
     if (!geometry) {
       throw new TypeError("drawImage() requires 3, 5, or 9 arguments.");
     }
 
-    if (geometry.sourceWidth === 0 || geometry.sourceHeight === 0) {
-      throw createIndexSizeError("The source width or height is 0.");
-    }
-
-    if (geometry.destWidth === 0 || geometry.destHeight === 0 || geometry.sourceCanvas.width === 0 || geometry.sourceCanvas.height === 0) {
+    if (
+      geometry.sourceWidth === 0 ||
+      geometry.sourceHeight === 0 ||
+      geometry.destWidth === 0 ||
+      geometry.destHeight === 0
+    ) {
       return;
     }
 
@@ -2531,7 +2555,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #drawCanvasImage(geometry: DrawImageGeometry): void {
     const sourceRect = normalizeRect(geometry.sourceX, geometry.sourceY, geometry.sourceWidth, geometry.sourceHeight);
     const destRect = normalizeRect(geometry.destX, geometry.destY, geometry.destWidth, geometry.destHeight);
-    const clippedSource = clipSourceRect(sourceRect, geometry.sourceCanvas.width, geometry.sourceCanvas.height);
+    const clippedSource = clipSourceRect(sourceRect, geometry.source.width, geometry.source.height);
 
     if (!clippedSource || destRect.width === 0 || destRect.height === 0) {
       return;
@@ -2561,7 +2585,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
 
     const bounds = transformedRectBounds(clippedDest, this.#transform, this.canvas.width, this.canvas.height);
-    const sourcePixels = geometry.sourceCanvas.getContext("2d").getPixels();
+    const sourcePixels = new Uint8ClampedArray(geometry.source.pixels);
     const targetPixels = this.getPixels();
     const alpha = this.#globalAlpha * this.#filterOpacity;
 
@@ -2588,8 +2612,8 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
         const sourceY = clippedSource.top + v * clippedSource.height;
         const color = applyAlpha(
           this.#imageSmoothingEnabled
-            ? sampleBilinear(sourcePixels, geometry.sourceCanvas.width, geometry.sourceCanvas.height, sourceX, sourceY)
-            : sampleNearest(sourcePixels, geometry.sourceCanvas.width, geometry.sourceCanvas.height, sourceX, sourceY),
+            ? sampleBilinear(sourcePixels, geometry.source.width, geometry.source.height, sourceX, sourceY)
+            : sampleNearest(sourcePixels, geometry.source.width, geometry.source.height, sourceX, sourceY),
           alpha
         );
         compositePixel(targetPixels, (y * this.canvas.width + x) * 4, color, this.#globalCompositeOperation);
@@ -4226,32 +4250,32 @@ function normalizePatternRepetition(repetition: string | null): CanvasPatternRep
   return undefined;
 }
 
-function normalizeDrawImageArguments(sourceCanvas: Canvas, args: readonly number[]): DrawImageGeometry | undefined {
+function normalizeDrawImageArguments(source: ResolvedCanvasImageSource, args: readonly number[]): DrawImageGeometry | undefined {
   const numbers = Array.from(args, Number);
 
   if (numbers.length === 2) {
     const [dx, dy] = numbers;
     return {
-      sourceCanvas,
+      source,
       sourceX: 0,
       sourceY: 0,
-      sourceWidth: sourceCanvas.width,
-      sourceHeight: sourceCanvas.height,
+      sourceWidth: source.width,
+      sourceHeight: source.height,
       destX: dx,
       destY: dy,
-      destWidth: sourceCanvas.width,
-      destHeight: sourceCanvas.height
+      destWidth: source.width,
+      destHeight: source.height
     };
   }
 
   if (numbers.length === 4) {
     const [dx, dy, destWidth, destHeight] = numbers;
     return {
-      sourceCanvas,
+      source,
       sourceX: 0,
       sourceY: 0,
-      sourceWidth: sourceCanvas.width,
-      sourceHeight: sourceCanvas.height,
+      sourceWidth: source.width,
+      sourceHeight: source.height,
       destX: dx,
       destY: dy,
       destWidth,
@@ -4262,7 +4286,7 @@ function normalizeDrawImageArguments(sourceCanvas: Canvas, args: readonly number
   if (numbers.length === 8) {
     const [sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight] = numbers;
     return {
-      sourceCanvas,
+      source,
       sourceX,
       sourceY,
       sourceWidth,
@@ -4360,7 +4384,42 @@ function lerp(left: number, right: number, ratio: number): number {
   return left + (right - left) * ratio;
 }
 
-function isCanvasImageSource(value: unknown): value is Canvas {
+function resolveCanvasImageSource(value: unknown): ResolvedCanvasImageSource | undefined {
+  if (isCanvas(value)) {
+    return {
+      width: value.width,
+      height: value.height,
+      get pixels() {
+        return value.getContext("2d").getPixels();
+      },
+      assertUsable() {
+        if (value.getContext("2d").hasOpenLayers()) {
+          throw createInvalidStateError("Canvas cannot be used as an image source while layers are open.");
+        }
+      }
+    };
+  }
+
+  if (value instanceof CanvasImageData) {
+    return {
+      width: value.width,
+      height: value.height,
+      pixels: new Uint8ClampedArray(value.data)
+    };
+  }
+
+  if (isCanvasImageSourceData(value)) {
+    return {
+      width: value.width,
+      height: value.height,
+      pixels: new Uint8ClampedArray(value.data)
+    };
+  }
+
+  return undefined;
+}
+
+function isCanvas(value: unknown): value is Canvas {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -4370,10 +4429,13 @@ function isCanvasImageSource(value: unknown): value is Canvas {
   );
 }
 
-function assertCanvasSourceUsable(canvas: Canvas): void {
-  if (canvas.getContext("2d").hasOpenLayers()) {
-    throw createInvalidStateError("Canvas cannot be used as an image source while layers are open.");
+function isCanvasImageSourceData(value: unknown): value is CanvasImageSourceData {
+  if (typeof value !== "object" || value === null) {
+    return false;
   }
+
+  const { width, height, data } = value as CanvasImageSourceData;
+  return Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0 && data instanceof Uint8ClampedArray && data.length === width * height * 4;
 }
 
 function parseCanvasFilter(value: string): ParsedCanvasFilter | undefined {

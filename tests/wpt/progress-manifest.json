@@ -108,13 +108,8 @@
     },
     {
       "status": "blocked",
-      "prefix": "html/canvas/element/drawing-images-to-the-canvas/",
-      "reason": "drawImage() supports canvas sources with unit coverage; broader WPTs require ImageBitmap, HTMLImageElement, decoded resources, and additional CanvasImageSource host behavior."
-    },
-    {
-      "status": "blocked",
       "prefix": "html/canvas/element/compositing/",
-      "reason": "Core globalAlpha/globalCompositeOperation fillRect coverage exists; remaining tests need drawImage(), clipping, broader pattern/shadow/filter interactions, and pixel-accurate advanced blend modes."
+      "reason": "globalAlpha/globalCompositeOperation coverage includes fillRect, solid, canvas, image, transparent-source, clipped, globalAlpha canvas/image/pattern, and uncovered no-context smoke tests; remaining tests need full-mode/grid reftest fidelity, shadow/filter interactions, and uncovered fill/image/pattern compositing outside painted source bounds."
     },
     {
       "status": "blocked",

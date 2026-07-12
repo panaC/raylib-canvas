@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { WPT_REPORTS, WPT_SHIM_OUTPUT, WPT_SMOKE_TESTS_FILE } from "./wpt-config.mjs";
 
@@ -24,7 +24,7 @@ execFileSync(process.execPath, ["scripts/build-wpt-shim.mjs"], { stdio: "inherit
 const reportPath = WPT_REPORTS[suite];
 mkdirSync(dirname(reportPath), { recursive: true });
 
-const tests = suite === "smoke" ? readSmokeTests() : ["html/canvas"];
+const tests = suite === "smoke" ? [] : ["html/canvas"];
 const args = [
   join(wptRoot, "wpt"),
   "run",
@@ -54,6 +54,12 @@ if (browserBinary) {
 
 if (process.env.WPT_WEBDRIVER_BINARY) {
   args.push("--webdriver-binary", process.env.WPT_WEBDRIVER_BINARY);
+}
+
+if (suite === "smoke") {
+  const includeFile = join(dirname(reportPath), "smoke-include.txt");
+  writeFileSync(includeFile, `${readSmokeTests().join("\n")}\n`);
+  args.push("--include-file", includeFile);
 }
 
 args.push(browser, ...tests);

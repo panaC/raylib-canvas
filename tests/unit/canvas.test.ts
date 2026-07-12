@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
-import { createCanvas, createRaylibCanvas2DContextFactory } from "../../src/index";
+import { CanvasImageData, createCanvas, createRaylibCanvas2DContextFactory } from "../../src/index";
 
 const USE_RAYLIB_CONTEXT = process.env.RAYLIB_CANVAS_CONTEXT === "raylib";
 const disposableContexts: Array<{ dispose(): void }> = [];
@@ -200,6 +200,35 @@ describe("createCanvas", () => {
     ctx.fillRect(0, 0, 4, 2);
     expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
     expect(pixelAt(ctx, 2, 0)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("creates patterns from host RGBA image sources", async () => {
+    const image = {
+      width: 2,
+      height: 1,
+      data: new Uint8ClampedArray([
+        255, 0, 0, 255,
+        0, 255, 0, 255
+      ])
+    };
+    const canvas = await createTestCanvas(3, 1);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = ctx.createPattern(image, "repeat")!;
+    ctx.fillRect(0, 0, 3, 1);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 0)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 2, 0)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("rejects malformed host RGBA image sources", async () => {
+    const canvas = await createTestCanvas(1, 1);
+    const ctx = canvas.getContext("2d");
+    const malformed = { width: 1.5, height: 1, data: new Uint8ClampedArray(8) };
+
+    expect(ctx.createPattern(malformed, "repeat")).toBeNull();
+    expect(() => ctx.drawImage(malformed, 0, 0)).toThrow(/CanvasImageSource/i);
   });
 
   it("validates globalAlpha assignments", async () => {
@@ -1839,6 +1868,118 @@ describe("createCanvas", () => {
 
     ctx.drawImage(source, 2, 0, 1, 2, 6, 0, 1, 2);
     expect(pixelAt(ctx, 6, 1)).toEqual([0, 0, 255, 255]);
+  });
+
+  it("draws CanvasImageData and host RGBA image sources", async () => {
+    const canvas = await createTestCanvas(4, 1);
+    const ctx = canvas.getContext("2d");
+    const imageData = new CanvasImageData(new Uint8ClampedArray([
+      255, 0, 0, 255,
+      0, 255, 0, 255
+    ]), 2, 1);
+
+    ctx.drawImage(imageData, 0, 0);
+    ctx.drawImage(
+      {
+        width: 2,
+        height: 1,
+        data: new Uint8ClampedArray([
+          0, 0, 255, 255,
+          255, 255, 255, 255
+        ])
+      },
+      2,
+      0
+    );
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 0)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 2, 0)).toEqual([0, 0, 255, 255]);
+    expect(pixelAt(ctx, 3, 0)).toEqual([255, 255, 255, 255]);
+  });
+
+  it("treats zero drawImage source rectangles as no-ops", async () => {
+    const source = await createTestCanvas(2, 2);
+    const sourceContext = source.getContext("2d");
+    sourceContext.fillStyle = "red";
+    sourceContext.fillRect(0, 0, 2, 2);
+
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#00ff00";
+    ctx.fillRect(0, 0, 2, 2);
+
+    expect(() => ctx.drawImage(source, 0, 0, 0, 1, 0, 0, 2, 2)).not.toThrow();
+    expect(() => ctx.drawImage(source, 0, 0, 1, 0, 0, 0, 2, 2)).not.toThrow();
+    expect(() => ctx.drawImage(source, 0, 0, 0, 0, 0, 0, 2, 2)).not.toThrow();
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 1, 1)).toEqual([0, 255, 0, 255]);
+  });
+
+  it("throws InvalidStateError for zero-sized canvas image sources", async () => {
+    const canvas = await createTestCanvas(2, 2);
+    const ctx = canvas.getContext("2d");
+    const zeroWidthSource = {
+      width: 0,
+      height: 2,
+      getContext: () => ({
+        getPixels: () => new Uint8ClampedArray(0),
+        hasOpenLayers: () => false
+      })
+    } as unknown as TestCanvas;
+    const zeroHeightSource = {
+      ...zeroWidthSource,
+      width: 2,
+      height: 0
+    } as unknown as TestCanvas;
+
+    expect(() => ctx.drawImage(zeroWidthSource, 0, 0)).toThrowError(/zero width or height/i);
+    expect(() => ctx.drawImage(zeroHeightSource, 0, 0)).toThrowError(/zero width or height/i);
+  });
+
+  it("snapshots canvas pixels before drawing a canvas onto itself", async () => {
+    const canvas = await createTestCanvas(3, 3);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#00ff00";
+    ctx.fillRect(0, 1, 3, 2);
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 3, 1);
+
+    ctx.drawImage(canvas, 0, 1);
+    ctx.fillStyle = "#00ff00";
+    ctx.fillRect(0, 0, 3, 2);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 2, 0)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 0, 2)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 2, 2)).toEqual([0, 255, 0, 255]);
+  });
+
+  it("snapshots host image source pixels for patterns and drawing", async () => {
+    const pixels = new Uint8ClampedArray([
+      255, 0, 0, 255,
+      0, 255, 0, 255
+    ]);
+    const source = { width: 2, height: 1, data: pixels };
+    const canvas = await createTestCanvas(4, 1);
+    const ctx = canvas.getContext("2d");
+    const pattern = ctx.createPattern(source, "repeat")!;
+
+    pixels.set([
+      0, 0, 255, 255,
+      255, 255, 255, 255
+    ]);
+
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, 2, 1);
+    ctx.drawImage(source, 2, 0);
+    pixels.fill(0);
+
+    expect(pixelAt(ctx, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixelAt(ctx, 1, 0)).toEqual([0, 255, 0, 255]);
+    expect(pixelAt(ctx, 2, 0)).toEqual([0, 0, 255, 255]);
+    expect(pixelAt(ctx, 3, 0)).toEqual([255, 255, 255, 255]);
   });
 
   it("applies drawImage transform alpha composite and nearest-neighbor smoothing", async () => {

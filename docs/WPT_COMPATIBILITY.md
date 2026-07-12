@@ -74,10 +74,10 @@ covers official upstream files for:
   and cross-canvas behavior, color-stop validation, non-finite linear/radial
   gradient validation, negative radial radius validation, update behavior, and
   unit coverage for linear/radial/conic rectangle rendering
-- canvas-backed `CanvasPattern` creation, invalid repetition errors, and unit
-  coverage for repeat and no-repeat painting; more repetition validation is
-  smoke-gated, while image-backed patterns remain partial until broader
-  CanvasImageSource support lands
+- canvas-backed and host RGBA/ImageData-backed `CanvasPattern` creation, invalid
+  repetition errors, and unit coverage for repeat and no-repeat painting; more
+  repetition validation is smoke-gated, while decoded image-resource patterns
+  remain partial
 - shadow offset, blur, and color default/valid/invalid assignment behavior,
   plus smoke/unit coverage for simple shadow rendering; blurred shadow raster
   fidelity remains partial
@@ -100,10 +100,21 @@ covers official upstream files for:
 - `measureText()` has empty-string WPT coverage and deterministic fallback
   metrics in unit tests; real font loading, shaping, and browser-exact
   `TextMetrics` values remain partial
-- `drawImage()` has unit coverage for canvas sources, 3/5/9 argument overloads,
-  source cropping, transforms, alpha, compositing, and nearest-neighbor
-  smoothing. Broader WPT coverage remains blocked on host image sources such as
-  `ImageBitmap`, `HTMLImageElement`, and decoded image resources
+- `drawImage()` has unit coverage for canvas, `CanvasImageData`, and host RGBA
+  sources, 3/5/9 argument overloads, source cropping, transforms, alpha,
+  compositing, clipping, negative destination/source dimensions, non-finite
+  no-op behavior, zero source rectangle no-ops, path isolation, self-copy
+  source snapshots, transforms, edge wrapping, incomplete/broken image states,
+  zero-sized DOM canvas errors, detached `OffscreenCanvas` errors, SVG/animated
+  image sources, and nearest-neighbor smoothing. The full upstream
+  `drawing-images-to-the-canvas/` element directory is smoke-gated; broader
+  manual decoded-resource, tainting, and browser-exact smoothing coverage
+  remains partial
+- `globalCompositeOperation` has smoke coverage for solid, canvas, image,
+  transparent-source, clipped, globalAlpha canvas/image/pattern, and uncovered
+  no-context compositing cases. Full-mode/grid reftests and uncovered
+  fill/image/pattern compositing remain partial until the renderer applies
+  browser-exact compositing across pixels outside the painted source bounds.
 - line style defaults, valid/invalid assignment behavior, line cap rendering,
   selected join/miter rendering, invalid stroke-style no-op behavior, and
   basic stroke width rendering for `lineWidth`, `lineCap`, `lineJoin`, and

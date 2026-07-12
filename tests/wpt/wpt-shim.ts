@@ -5,6 +5,7 @@ import {
   CanvasPath2D,
   CanvasPattern,
   RaylibCanvas2DContext,
+  type CanvasImageSource as RaylibCanvasImageSource,
   type RaylibCanvasWasmModule
 } from "../../src/index";
 
@@ -289,6 +290,14 @@ function getOrCreateWrapper(domCanvas: HTMLCanvasElement): CanvasRenderingContex
             const result = context.drawImage(toCanvasImageSource(image), ...(drawArgs as number[]));
             syncVisibleCanvas(domCanvas);
             return result;
+          };
+        }
+
+        if (property === "createPattern") {
+          return (...args: unknown[]) => {
+            assertMinimumArguments(property, args.length);
+            const [image, repetition] = args;
+            return getCurrentContext(domCanvas).createPattern(toCanvasImageSource(image), repetition as string | null | undefined);
           };
         }
 
@@ -718,8 +727,12 @@ function toCanvasImageData(imageData: ImageData | CanvasImageData): CanvasImageD
   });
 }
 
-function toCanvasImageSource(image: unknown): Canvas {
+function toCanvasImageSource(image: unknown): RaylibCanvasImageSource {
   if (image instanceof HTMLCanvasElement) {
+    if (image.width === 0 || image.height === 0) {
+      throw new DOMException("The canvas source has zero width or height.", "InvalidStateError");
+    }
+
     return getOrCreateBacking(image).canvas;
   }
 
@@ -727,7 +740,57 @@ function toCanvasImageSource(image: unknown): Canvas {
     return image;
   }
 
+  if (image instanceof CanvasImageData) {
+    return image;
+  }
+
+  if (image instanceof ImageData) {
+    return toCanvasImageData(image);
+  }
+
+  if (typeof HTMLImageElement === "function" && image instanceof HTMLImageElement) {
+    return copyNativeImageSourcePixels(image, image.naturalWidth, image.naturalHeight);
+  }
+
+  if (typeof ImageBitmap === "function" && image instanceof ImageBitmap) {
+    return copyNativeImageSourcePixels(image, image.width, image.height);
+  }
+
+  if (typeof SVGImageElement === "function" && image instanceof SVGImageElement) {
+    return copyNativeImageSourcePixels(image, image.width.baseVal.value, image.height.baseVal.value);
+  }
+
+  if (typeof OffscreenCanvas === "function" && image instanceof OffscreenCanvas) {
+    try {
+      image.getContext("2d");
+    } catch {
+      throw new DOMException("The OffscreenCanvas source is detached.", "InvalidStateError");
+    }
+  }
+
   throw new TypeError("Unsupported CanvasImageSource for raylib-canvas WPT shim.");
+}
+
+function copyNativeImageSourcePixels(image: CanvasImageSource, width: number, height: number): CanvasImageData {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  if (width === 0 || height === 0) {
+    if (image instanceof HTMLImageElement && image.complete && image.currentSrc && !image.currentSrc.endsWith(".svg")) {
+      throw new DOMException("The image source could not be decoded.", "InvalidStateError");
+    }
+
+    return new CanvasImageData(1, 1);
+  }
+
+  const context = originalHTMLCanvasGetContext.call(canvas, "2d");
+  if (!context) {
+    throw new TypeError("Could not create a native 2D context for CanvasImageSource conversion.");
+  }
+
+  originalCanvasDrawImage.call(context, image, 0, 0);
+  return toCanvasImageData(context.getImageData(0, 0, width, height));
 }
 
 function patchCanvasDimension(property: "width" | "height"): void {

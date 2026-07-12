@@ -159,6 +159,7 @@ export {
   RaylibCanvas2DContext
 } from "./renderers/raylib";
 export type { Canvas2DContext, Rgba } from "./context";
+export type { CanvasImageSource, CanvasImageSourceData } from "./context";
 export type {
   RaylibCanvas2DContextOptions,
   RaylibCanvasModuleLoadOptions,
