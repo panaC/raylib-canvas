@@ -18,9 +18,13 @@
 
 ## context backend status
 
-- JavaScript software context: default backend through `JavascriptCanvas2DContext`.
+- JavaScript software context: default backend through `Canvas2DRenderingContext`.
 - raylib 6.0 WASM context: opt-in backend through `createRaylibCanvas2DContextFactory()`.
   It currently targets the same Canvas API coverage as the JavaScript context.
+- Renderer override points are intentionally narrow:
+  - `protected getBasePixels()` returns the live base RGBA backing store.
+  - `protected fillRectPixels(...)` writes an already-normalized solid RGBA rectangle.
+  - `protected clearRectPixels(...)` clears an already-normalized rectangle to transparent black.
 
 | API method name | canvas official web reference | status (waiting/not-planned/partial/done) |
 | --- | --- | --- |

@@ -1404,7 +1404,7 @@ export class CanvasPattern {
   }
 }
 
-export abstract class Canvas2DRenderingContext implements Canvas2DContext {
+export class Canvas2DRenderingContext implements Canvas2DContext {
   #fillStyle: string | CanvasGradient | CanvasPattern = "#000000";
   #fillPaint: CanvasPaintStyle = { type: "color", rgba: [0, 0, 0, 255] };
   #strokeStyle: string | CanvasGradient | CanvasPattern = "#000000";
@@ -1442,9 +1442,12 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
   #imageSmoothingQuality: CanvasImageSmoothingQuality = "low";
   #clipMask: Uint8Array | undefined;
   #layerStack: CanvasLayer[] = [];
+  readonly #pixels: Uint8ClampedArray;
   fillRule: CanvasFillRule = "nonzero";
 
-  constructor(readonly canvas: Canvas) {}
+  constructor(readonly canvas: Canvas) {
+    this.#pixels = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+  }
 
   getPixels(): Uint8ClampedArray {
     return this.#layerStack.at(-1)?.pixels ?? this.getBasePixels();
@@ -1454,9 +1457,70 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     return this.#layerStack.length > 0;
   }
 
-  protected abstract getBasePixels(): Uint8ClampedArray;
+  /**
+   * Renderer override point: returns the live base RGBA pixel buffer.
+   * Subclasses that own pixels outside JavaScript memory, such as raylib WASM,
+   * override this while inheriting the public Canvas 2D API behavior.
+   */
+  protected getBasePixels(): Uint8ClampedArray {
+    return this.#pixels;
+  }
 
-  protected abstract fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void;
+  /**
+   * Renderer override point: writes an already-normalized solid RGBA rectangle.
+   * Public Canvas semantics stay in fillRect(); renderer subclasses override
+   * this narrow pixel primitive when they can draw it more directly.
+   */
+  protected fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void {
+    const x2 = x + width;
+    const y2 = y + height;
+    const left = clamp(Math.trunc(Math.min(x, x2)), 0, this.canvas.width);
+    const top = clamp(Math.trunc(Math.min(y, y2)), 0, this.canvas.height);
+    const right = clamp(Math.trunc(Math.max(x, x2)), 0, this.canvas.width);
+    const bottom = clamp(Math.trunc(Math.max(y, y2)), 0, this.canvas.height);
+
+    if (right <= left || bottom <= top) {
+      return;
+    }
+
+    for (let py = top; py < bottom; py += 1) {
+      for (let px = left; px < right; px += 1) {
+        const offset = (py * this.canvas.width + px) * 4;
+        this.#pixels[offset] = color[0];
+        this.#pixels[offset + 1] = color[1];
+        this.#pixels[offset + 2] = color[2];
+        this.#pixels[offset + 3] = color[3];
+      }
+    }
+  }
+
+  /**
+   * Renderer override point: clears an already-normalized rectangle to transparent black.
+   * Public Canvas semantics stay in clearRect(); renderer subclasses override
+   * this narrow pixel primitive when they own a native clear operation.
+   */
+  protected clearRectPixels(x: number, y: number, width: number, height: number): void {
+    const x2 = x + width;
+    const y2 = y + height;
+    const left = clamp(Math.trunc(Math.min(x, x2)), 0, this.canvas.width);
+    const top = clamp(Math.trunc(Math.min(y, y2)), 0, this.canvas.height);
+    const right = clamp(Math.trunc(Math.max(x, x2)), 0, this.canvas.width);
+    const bottom = clamp(Math.trunc(Math.max(y, y2)), 0, this.canvas.height);
+
+    if (right <= left || bottom <= top) {
+      return;
+    }
+
+    for (let py = top; py < bottom; py += 1) {
+      for (let px = left; px < right; px += 1) {
+        const offset = (py * this.canvas.width + px) * 4;
+        this.#pixels[offset] = 0;
+        this.#pixels[offset + 1] = 0;
+        this.#pixels[offset + 2] = 0;
+        this.#pixels[offset + 3] = 0;
+      }
+    }
+  }
 
   get fillStyle(): string | CanvasGradient | CanvasPattern {
     return this.#fillStyle;
@@ -2627,7 +2691,7 @@ export abstract class Canvas2DRenderingContext implements Canvas2DContext {
     }
 
     if (isIdentityMatrix(this.#transform) && !this.#clipMask && this.#layerStack.length === 0) {
-      this.fillRectPixels(x, y, width, height, TRANSPARENT_BLACK);
+      this.clearRectPixels(x, y, width, height);
       return;
     }
 

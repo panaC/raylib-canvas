@@ -9,7 +9,6 @@ import {
   CanvasTransformMatrix,
   type Canvas2DContext
 } from "./context";
-import { JavascriptCanvas2DContext } from "./renderers/javascript";
 
 export interface CreateCanvasOptions {
   context?: Canvas2DContextFactory;
@@ -59,7 +58,7 @@ export class Canvas {
 
     this.width = width;
     this.height = height;
-    this.#createContext = options.context ?? ((canvas) => new JavascriptCanvas2DContext(canvas));
+    this.#createContext = options.context ?? ((canvas) => new Canvas2DRenderingContext(canvas));
     this.#pngEncoder = options.pngEncoder ?? new PngJsEncoder();
   }
 
@@ -150,8 +149,7 @@ export {
   CanvasPattern,
   CanvasPath2D,
   CanvasTextMetrics,
-  CanvasTransformMatrix,
-  JavascriptCanvas2DContext
+  CanvasTransformMatrix
 };
 export {
   createRaylibCanvas2DContextFactory,

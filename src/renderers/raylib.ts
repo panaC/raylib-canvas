@@ -70,13 +70,19 @@ export class RaylibCanvas2DContext extends Canvas2DRenderingContext {
     this.#pixels = this.#createPixelsView();
   }
 
-  protected fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void {
+  protected override fillRectPixels(x: number, y: number, width: number, height: number, color: Rgba): void {
     this.#assertNotDisposed();
     this.#module._rcl_fill_rect(this.#handle, x, y, width, height, color[0], color[1], color[2], color[3]);
     this.#refreshPixelsView();
   }
 
-  protected getBasePixels(): Uint8ClampedArray {
+  protected override clearRectPixels(x: number, y: number, width: number, height: number): void {
+    this.#assertNotDisposed();
+    this.#module._rcl_clear_rect(this.#handle, x, y, width, height);
+    this.#refreshPixelsView();
+  }
+
+  protected override getBasePixels(): Uint8ClampedArray {
     this.#assertNotDisposed();
     this.#refreshPixelsView();
     return this.#pixels;

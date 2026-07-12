@@ -66,13 +66,23 @@ The implemented API is intentionally partial. The current public surface include
 
 See [docs/API_MATRIX.md](docs/API_MATRIX.md) for the broader Canvas 2D API checklist.
 
-## Backend Contexts
+## Canvas Contexts
 
-### JavaScript context
+### Default JavaScript context
 
-The default backend is `JavascriptCanvas2DContext`. It owns an RGBA `Uint8ClampedArray`, rasterizes the currently supported primitives in JavaScript, and is used by the unit, WPT, e2e, and pdf.js tests.
+The default `Canvas2DRenderingContext` owns an RGBA `Uint8ClampedArray`, rasterizes the currently supported primitives in JavaScript, and is used by the unit, WPT, e2e, and pdf.js tests.
 
 PNG output is handled by `pngjs` behind the injectable `PngEncoder` interface.
+
+Renderer subclasses should keep the public Canvas API behavior in
+`Canvas2DRenderingContext` and override only the narrow pixel primitives they
+own. The current override points are:
+
+| Method | Purpose |
+| --- | --- |
+| `protected getBasePixels()` | Returns the live base RGBA backing store. |
+| `protected fillRectPixels(...)` | Writes an already-normalized solid RGBA rectangle. |
+| `protected clearRectPixels(...)` | Clears an already-normalized rectangle to transparent black. |
 
 ### Context factory injection
 
@@ -93,6 +103,10 @@ class CustomCanvas2DContext extends Canvas2DRenderingContext {
     // Forward drawing work to another implementation.
   }
 
+  protected clearRectPixels(x: number, y: number, width: number, height: number): void {
+    // Forward clear work to another implementation.
+  }
+
   getPixels(): Uint8ClampedArray {
     // Return RGBA pixels for PNG encoding and getImageData().
     return this.#pixels;
@@ -104,7 +118,7 @@ const canvas = await createCanvas(800, 450, {
 });
 ```
 
-### raylib context
+### raylib renderer
 
 The raylib backend is available as an opt-in WASM `Canvas2DContext`. The public canvas
 facade stays the same: create a raylib context factory, pass it through the
