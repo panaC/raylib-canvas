@@ -1,7 +1,7 @@
 {
-  "name": "raylib-canvas",
+  "name": "canvas-rasterizer",
   "version": "0.1.0",
-  "description": "Canvas-like 2D API starter pack with swappable contexts.",
+  "description": "Canvas 2D rasterizer with swappable context backends.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -44,6 +44,7 @@
   },
   "keywords": [
     "canvas",
+    "rasterizer",
     "raylib",
     "wasm",
     "2d"

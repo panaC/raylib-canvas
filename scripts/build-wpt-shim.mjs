@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import esbuild from "esbuild";
 import { WPT_SHIM_OUTPUT, WPT_SHIM_SOURCE } from "./wpt-config.mjs";
 
@@ -8,7 +8,7 @@ const RAYLIB_WPT_PRELOAD = "dist/native/raylib-canvas-wpt.js";
 mkdirSync(dirname(WPT_SHIM_OUTPUT), { recursive: true });
 
 await esbuild.build({
-  entryPoints: [WPT_SHIM_SOURCE],
+  entryPoints: [resolve(WPT_SHIM_SOURCE)],
   bundle: true,
   target: "es2022",
   platform: "browser",

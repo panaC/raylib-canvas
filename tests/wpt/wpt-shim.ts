@@ -5,17 +5,17 @@ import {
   CanvasPath2D,
   CanvasPattern,
   RaylibCanvas2DContext,
-  type CanvasImageSource as RaylibCanvasImageSource,
+  type CanvasImageSource as CanvasRasterizerImageSource,
   type RaylibCanvasWasmModule
 } from "../../src/index";
 
-type Raylib2DContext = NonNullable<ReturnType<Canvas["getContext"]>>;
+type CanvasRasterizer2DContext = NonNullable<ReturnType<Canvas["getContext"]>>;
 
 interface BackingCanvas {
   readonly width: number;
   readonly height: number;
   readonly canvas: Canvas;
-  readonly context: Raylib2DContext;
+  readonly context: CanvasRasterizer2DContext;
   readonly raylibContext?: RaylibCanvas2DContext;
 }
 
@@ -166,7 +166,7 @@ Element.prototype.removeAttribute = function patchedRemoveAttribute(this: Elemen
   }
 };
 
-Object.defineProperty(globalThis, "__raylibCanvasWptShim", {
+Object.defineProperty(globalThis, "__canvasRasterizerWptShim", {
   configurable: true,
   value: { version: 1 }
 });
@@ -190,12 +190,12 @@ Object.defineProperty(globalThis, "CanvasPattern", {
 });
 
 class WptCanvasFilter {
-  readonly __raylibCanvasFilterOperations: readonly unknown[];
-  readonly __raylibCanvasFilterCss: string | undefined;
+  readonly __canvasRasterizerFilterOperations: readonly unknown[];
+  readonly __canvasRasterizerFilterCss: string | undefined;
 
   constructor(filter: unknown) {
-    this.__raylibCanvasFilterOperations = Array.isArray(filter) ? [...filter] : [filter];
-    this.__raylibCanvasFilterCss = serializeNativeCanvasFilter(this.__raylibCanvasFilterOperations);
+    this.__canvasRasterizerFilterOperations = Array.isArray(filter) ? [...filter] : [filter];
+    this.__canvasRasterizerFilterCss = serializeNativeCanvasFilter(this.__canvasRasterizerFilterOperations);
   }
 
   toString(): string {
@@ -485,7 +485,7 @@ function isZeroSizedDrawImage(args: unknown[]): boolean {
   return false;
 }
 
-function getCurrentContext(domCanvas: HTMLCanvasElement): Raylib2DContext {
+function getCurrentContext(domCanvas: HTMLCanvasElement): CanvasRasterizer2DContext {
   return getOrCreateBacking(domCanvas).context;
 }
 
@@ -508,7 +508,7 @@ function syncVisibleCanvas(domCanvas: HTMLCanvasElement): void {
 
 function drawNativeFilteredRect(
   domCanvas: HTMLCanvasElement,
-  context: Raylib2DContext,
+  context: CanvasRasterizer2DContext,
   [x, y, width, height]: [number, number, number, number]
 ): boolean {
   if (!isFilterWptPage()) {
@@ -550,7 +550,7 @@ function nativeCssFilterFromValue(value: unknown): string | undefined {
   }
 
   if (value && typeof value === "object") {
-    return (value as { readonly __raylibCanvasFilterCss?: string }).__raylibCanvasFilterCss;
+    return (value as { readonly __canvasRasterizerFilterCss?: string }).__canvasRasterizerFilterCss;
   }
 
   return undefined;
@@ -602,7 +602,7 @@ function nativeDropShadowOpacity(record: Record<string, unknown>): number {
 }
 
 function createNativeGaussianBlurFilter(stdDeviationX: number, stdDeviationY: number): string {
-  const id = `raylib-canvas-wpt-filter-${nativeSvgFilterSequence++}`;
+  const id = `canvas-rasterizer-wpt-filter-${nativeSvgFilterSequence++}`;
   const blur = document.createElementNS("http://www.w3.org/2000/svg", "feGaussianBlur");
   blur.setAttribute("stdDeviation", `${stdDeviationX} ${stdDeviationY}`);
   nativeSvgFilterDefinitions.set(id, [blur]);
@@ -617,7 +617,7 @@ function createNativeDropShadowFilter(
   color: string,
   opacity: number
 ): string {
-  const id = `raylib-canvas-wpt-filter-${nativeSvgFilterSequence++}`;
+  const id = `canvas-rasterizer-wpt-filter-${nativeSvgFilterSequence++}`;
   const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
   shadow.setAttribute("dx", String(dx));
   shadow.setAttribute("dy", String(dy));
@@ -639,10 +639,10 @@ function ensureNativeSvgFilter(cssFilter: string): void {
     return;
   }
 
-  let svg = document.getElementById("raylib-canvas-wpt-filter-defs") as SVGSVGElement | null;
+  let svg = document.getElementById("canvas-rasterizer-wpt-filter-defs") as SVGSVGElement | null;
   if (!svg) {
     svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.id = "raylib-canvas-wpt-filter-defs";
+    svg.id = "canvas-rasterizer-wpt-filter-defs";
     svg.setAttribute("width", "0");
     svg.setAttribute("height", "0");
     svg.style.position = "absolute";
@@ -727,7 +727,7 @@ function toCanvasImageData(imageData: ImageData | CanvasImageData): CanvasImageD
   });
 }
 
-function toCanvasImageSource(image: unknown): RaylibCanvasImageSource {
+function toCanvasImageSource(image: unknown): CanvasRasterizerImageSource {
   if (image instanceof HTMLCanvasElement) {
     if (image.width === 0 || image.height === 0) {
       throw new DOMException("The canvas source has zero width or height.", "InvalidStateError");
@@ -768,7 +768,7 @@ function toCanvasImageSource(image: unknown): RaylibCanvasImageSource {
     }
   }
 
-  throw new TypeError("Unsupported CanvasImageSource for raylib-canvas WPT shim.");
+  throw new TypeError("Unsupported CanvasImageSource for canvas-rasterizer WPT shim.");
 }
 
 function copyNativeImageSourcePixels(image: CanvasImageSource, width: number, height: number): CanvasImageData {

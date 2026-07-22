@@ -48,7 +48,7 @@ function writeProvenance() {
     [
       "# raylib provenance",
       "",
-      "This directory vendors raylib for the optional raylib-canvas WASM backend.",
+      "This directory vendors raylib for the optional canvas-rasterizer raylib WASM backend.",
       "",
       `- Upstream: ${raylibRepoUrl.replace(/\.git$/, "")}`,
       "- Version: raylib 6.0",
@@ -56,7 +56,7 @@ function writeProvenance() {
       `- Commit: \`${raylibCommit}\``,
       "- License: zlib/libpng, preserved in `LICENSE`",
       "",
-      "The backend build compiles the small raylib-canvas C binding with raylib's",
+      "The backend build compiles the small canvas-rasterizer raylib C binding with raylib's",
       "`PLATFORM_MEMORY` and `GRAPHICS_API_OPENGL_SOFTWARE` flags.",
       ""
     ].join("\n")

@@ -1,10 +1,10 @@
-# raylib-canvas
+# canvas-rasterizer
 
-Canvas-like 2D API with swappable `Canvas2DContext` implementations, currently backed by a small JavaScript software rasterizer.
+Canvas 2D rasterizer with swappable `Canvas2DContext` implementations, currently backed by a small JavaScript software rasterizer.
 
 ## Goal
 
-`raylib-canvas` is an incremental Canvas 2D implementation for environments where the public API should feel close to web Canvas, while the actual pixels can be produced by different 2D context implementations.
+`canvas-rasterizer` is an incremental Canvas 2D implementation for environments where the public API should feel close to web Canvas, while the actual pixels can be produced by different 2D context implementations.
 
 The current package is deliberately small: it grows by adding narrow, tested Canvas API slices, then checking them against unit tests, browser-facing integration tests, selected upstream WPT files, and real consumers such as `pdfjs-dist`.
 
@@ -25,7 +25,7 @@ npm run build
 ```
 
 ```js
-import { createCanvas } from "raylib-canvas";
+import { createCanvas } from "canvas-rasterizer";
 
 const canvas = await createCanvas(800, 450);
 const ctx = canvas.getContext("2d");
@@ -90,7 +90,7 @@ own. The current override points are:
 Custom `Canvas2DContext` implementations can be injected without changing the public canvas facade:
 
 ```ts
-import { Canvas2DRenderingContext, createCanvas, type Canvas, type Rgba } from "raylib-canvas";
+import { Canvas2DRenderingContext, createCanvas, type Canvas, type Rgba } from "canvas-rasterizer";
 
 class CustomCanvas2DContext extends Canvas2DRenderingContext {
   readonly #pixels: Uint8ClampedArray;
@@ -138,7 +138,7 @@ facade stays the same: create a raylib context factory, pass it through the
 context option, and keep using the 2D context API normally.
 
 ```ts
-import { createCanvas, createRaylibCanvas2DContextFactory } from "raylib-canvas";
+import { createCanvas, createRaylibCanvas2DContextFactory } from "canvas-rasterizer";
 
 const context = await createRaylibCanvas2DContextFactory();
 const canvas = await createCanvas(800, 450, { context });

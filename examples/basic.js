@@ -1,4 +1,4 @@
-import { createCanvas } from "@yourname/raylib-canvas";
+import { createCanvas } from "canvas-rasterizer";
 
 const canvas = await createCanvas(800, 450);
 

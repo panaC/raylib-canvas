@@ -4558,7 +4558,7 @@ function parseCanvasFilterObject(value: unknown): ParsedCanvasFilter | undefined
     return undefined;
   }
 
-  const filterOperations = (value as { readonly __raylibCanvasFilterOperations?: unknown }).__raylibCanvasFilterOperations;
+  const filterOperations = (value as { readonly __canvasRasterizerFilterOperations?: unknown }).__canvasRasterizerFilterOperations;
   if (Array.isArray(filterOperations)) {
     return combineParsedFilters(filterOperations.map(parseCanvasFilterObject).filter((filter): filter is ParsedCanvasFilter => filter !== undefined), value);
   }

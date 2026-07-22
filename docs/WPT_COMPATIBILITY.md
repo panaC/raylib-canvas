@@ -21,7 +21,7 @@ Run the current green official smoke suite with:
 npm run test:wpt
 ```
 
-`test:wpt` builds `test-results/wpt/raylib-canvas-wpt-shim.js` and injects it
+`test:wpt` builds `test-results/wpt/canvas-rasterizer-wpt-shim.js` and injects it
 with WPT's `--inject-script` option. The runner passes `--yes` so WPT can
 install missing browser-driver components without an interactive prompt. The
 shim patches browser
